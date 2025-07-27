@@ -15,10 +15,6 @@ interface HabitSummaryProps {
 export const HabitSummary: React.FC<HabitSummaryProps> = ({ habit, entries }) => {
   const summary = useMemo(() => calculateSummary(habit, entries), [habit, entries]);
 
-  const formatDate = (date: Date) => {
-    return date.toLocaleDateString();
-  };
-
   const getStreakText = (streak: number) => {
     if (streak === 0) return 'No current streak';
     if (streak === 1) return '1 day';
