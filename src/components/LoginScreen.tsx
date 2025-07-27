@@ -7,7 +7,7 @@ import {
   Alert,
   ActivityIndicator,
 } from 'react-native';
-import { AuthService, User } from '../services/auth';
+import { FirebaseAuthService, User } from '../services/firebaseAuth';
 
 interface LoginScreenProps {
   onLoginSuccess: (user: User) => void;
@@ -19,24 +19,24 @@ export const LoginScreen: React.FC<LoginScreenProps> = ({ onLoginSuccess }) => {
   const handleGoogleSignIn = async () => {
     setIsLoading(true);
     try {
-      const user = await AuthService.signIn();
+      const user = await FirebaseAuthService.signInWithGoogle();
       if (user) {
         onLoginSuccess(user);
       } else {
         Alert.alert(
-          'Google Sign-In Not Available', 
-          'Google Sign-In is not configured yet. Please continue as guest to use the app.',
+          'Google Sign-In Failed', 
+          'Unable to sign in with Google. Please try again or continue as guest.',
           [
             { text: 'Continue as Guest', onPress: handleSkipLogin },
-            { text: 'OK' }
+            { text: 'Try Again' }
           ]
         );
       }
     } catch (error) {
-      console.error('Login error:', error);
+      console.error('Google Sign-In error:', error);
       Alert.alert(
-        'Google Sign-In Not Available', 
-        'Google Sign-In is not configured yet. Please continue as guest to use the app.',
+        'Google Sign-In Error', 
+        'An error occurred during Google Sign-In. Please continue as guest for now.',
         [
           { text: 'Continue as Guest', onPress: handleSkipLogin },
           { text: 'OK' }
@@ -48,11 +48,7 @@ export const LoginScreen: React.FC<LoginScreenProps> = ({ onLoginSuccess }) => {
   };
 
   const handleSkipLogin = () => {
-    const guestUser: User = {
-      id: 'guest',
-      name: 'Guest User',
-      email: 'guest@local',
-    };
+    const guestUser = FirebaseAuthService.createGuestUser();
     onLoginSuccess(guestUser);
   };
 
@@ -96,7 +92,7 @@ export const LoginScreen: React.FC<LoginScreenProps> = ({ onLoginSuccess }) => {
           </TouchableOpacity>
           
           <Text style={styles.note}>
-            Google Sign-In coming soon! For now, use the app without an account.
+            Sign in to sync your habits across devices. Guest mode saves data locally only.
           </Text>
         </View>
       </View>

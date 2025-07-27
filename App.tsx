@@ -15,7 +15,8 @@ import { HabitDashboard } from './src/components/HabitDashboard';
 import { SummaryContainer } from './src/components/SummaryContainer';
 import { LoginScreen } from './src/components/LoginScreen';
 import { StorageService } from './src/services/storage';
-import { AuthService, User } from './src/services/auth';
+import { FirebaseAuthService, User } from './src/services/firebaseAuth';
+import { FirebaseStorageService } from './src/services/firebaseStorage';
 
 function App() {
   const isDarkMode = useColorScheme() === 'dark';
@@ -25,6 +26,7 @@ function App() {
   const [selectedHabit, setSelectedHabit] = useState<Habit | null>(null);
   const [user, setUser] = useState<User | null>(null);
   const [isLoading, setIsLoading] = useState(true);
+  const [useFirebase, setUseFirebase] = useState(false);
 
   useEffect(() => {
     initializeApp();
@@ -32,21 +34,33 @@ function App() {
 
   const initializeApp = async () => {
     try {
-      await AuthService.initialize();
-      const currentUser = await AuthService.getCurrentUser();
-      setUser(currentUser);
+      await FirebaseAuthService.initialize();
       
-      if (currentUser) {
-        await loadData();
-      }
+      // Set up Firebase auth state listener
+      const unsubscribe = FirebaseAuthService.onAuthStateChanged(async (firebaseUser) => {
+        if (firebaseUser && !firebaseUser.isGuest) {
+          setUser(firebaseUser);
+          setUseFirebase(true);
+          await loadFirebaseData(firebaseUser.id);
+        } else {
+          const currentUser = FirebaseAuthService.getCurrentUser();
+          setUser(currentUser);
+          if (currentUser) {
+            await loadLocalData();
+          }
+        }
+        setIsLoading(false);
+      });
+
+      // Store unsubscribe function for cleanup
+      return unsubscribe;
     } catch (error) {
       console.error('Error initializing app:', error);
-    } finally {
       setIsLoading(false);
     }
   };
 
-  const loadData = async () => {
+  const loadLocalData = async () => {
     try {
       const loadedHabits = await StorageService.getHabits();
       const loadedEntries = await StorageService.getEntries();
@@ -57,22 +71,66 @@ function App() {
         setSelectedHabit(loadedHabits[0]);
       }
     } catch (error) {
-      console.error('Error loading data:', error);
+      console.error('Error loading local data:', error);
+    }
+  };
+
+  const loadFirebaseData = async (userId: string) => {
+    try {
+      const loadedHabits = await FirebaseStorageService.getHabits(userId);
+      const loadedEntries = await FirebaseStorageService.getEntries(userId);
+      setHabits(loadedHabits);
+      setEntries(loadedEntries);
+      
+      if (loadedHabits.length > 0 && !selectedHabit) {
+        setSelectedHabit(loadedHabits[0]);
+      }
+    } catch (error) {
+      console.error('Error loading Firebase data:', error);
     }
   };
 
   const handleLoginSuccess = async (loggedInUser: User) => {
     setUser(loggedInUser);
-    await loadData();
+    
+    if (!loggedInUser.isGuest) {
+      setUseFirebase(true);
+      
+      // Check if we need to migrate local data
+      const localHabits = await StorageService.getHabits();
+      const localEntries = await StorageService.getEntries();
+      
+      if (localHabits.length > 0) {
+        try {
+          await FirebaseStorageService.migrateLocalDataToFirebase(
+            loggedInUser.id, 
+            localHabits, 
+            localEntries
+          );
+          
+          // Clear local storage after successful migration
+          // await StorageService.clearAllData(); // We'll implement this
+          console.log('Local data migrated to Firebase');
+        } catch (error) {
+          console.error('Migration failed:', error);
+        }
+      }
+      
+      await loadFirebaseData(loggedInUser.id);
+    } else {
+      setUseFirebase(false);
+      await loadLocalData();
+    }
   };
 
   const handleLogout = async () => {
     try {
-      await AuthService.signOut();
+      await FirebaseAuthService.signOut();
       setUser(null);
       setHabits([]);
       setEntries([]);
       setSelectedHabit(null);
+      setUseFirebase(false);
       setCurrentView('dashboard');
     } catch (error) {
       console.error('Error logging out:', error);
@@ -81,8 +139,13 @@ function App() {
 
   const handleHabitCreate = async (habit: Habit) => {
     try {
-      await StorageService.saveHabit(habit);
-      setHabits([...habits, habit]);
+      if (useFirebase && user && !user.isGuest) {
+        await FirebaseStorageService.saveHabit(user.id, habit);
+        // Firebase real-time listener will update the state
+      } else {
+        await StorageService.saveHabit(habit);
+        setHabits([...habits, habit]);
+      }
       setSelectedHabit(habit);
       setCurrentView('dashboard');
     } catch (error) {
@@ -92,8 +155,13 @@ function App() {
 
   const handleEntryAdd = async (entry: HabitEntry) => {
     try {
-      await StorageService.saveEntry(entry);
-      setEntries([...entries, entry]);
+      if (useFirebase && user && !user.isGuest) {
+        await FirebaseStorageService.saveEntry(user.id, entry);
+        // Firebase real-time listener will update the state
+      } else {
+        await StorageService.saveEntry(entry);
+        setEntries([...entries, entry]);
+      }
     } catch (error) {
       console.error('Error adding entry:', error);
     }
@@ -101,8 +169,13 @@ function App() {
 
   const handleEntryUpdate = async (entry: HabitEntry) => {
     try {
-      await StorageService.saveEntry(entry);
-      setEntries(entries.map(e => e.id === entry.id ? entry : e));
+      if (useFirebase && user && !user.isGuest) {
+        await FirebaseStorageService.saveEntry(user.id, entry);
+        // Firebase real-time listener will update the state
+      } else {
+        await StorageService.saveEntry(entry);
+        setEntries(entries.map(e => e.id === entry.id ? entry : e));
+      }
     } catch (error) {
       console.error('Error updating entry:', error);
     }
