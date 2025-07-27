@@ -12,7 +12,9 @@ import { Habit, HabitEntry } from './src/types';
 import { HabitSetup } from './src/components/HabitSetup';
 import { HabitTracker } from './src/components/HabitTracker';
 import { HabitSummary } from './src/components/HabitSummary';
+import { LoginScreen } from './src/components/LoginScreen';
 import { StorageService } from './src/services/storage';
+import { AuthService, User } from './src/services/auth';
 
 function App() {
   const isDarkMode = useColorScheme() === 'dark';
@@ -20,10 +22,28 @@ function App() {
   const [entries, setEntries] = useState<HabitEntry[]>([]);
   const [currentView, setCurrentView] = useState<'setup' | 'tracker' | 'summary'>('tracker');
   const [selectedHabit, setSelectedHabit] = useState<Habit | null>(null);
+  const [user, setUser] = useState<User | null>(null);
+  const [isLoading, setIsLoading] = useState(true);
 
   useEffect(() => {
-    loadData();
+    initializeApp();
   }, []); // eslint-disable-line react-hooks/exhaustive-deps
+
+  const initializeApp = async () => {
+    try {
+      await AuthService.initialize();
+      const currentUser = await AuthService.getCurrentUser();
+      setUser(currentUser);
+      
+      if (currentUser) {
+        await loadData();
+      }
+    } catch (error) {
+      console.error('Error initializing app:', error);
+    } finally {
+      setIsLoading(false);
+    }
+  };
 
   const loadData = async () => {
     try {
@@ -37,6 +57,24 @@ function App() {
       }
     } catch (error) {
       console.error('Error loading data:', error);
+    }
+  };
+
+  const handleLoginSuccess = async (loggedInUser: User) => {
+    setUser(loggedInUser);
+    await loadData();
+  };
+
+  const handleLogout = async () => {
+    try {
+      await AuthService.signOut();
+      setUser(null);
+      setHabits([]);
+      setEntries([]);
+      setSelectedHabit(null);
+      setCurrentView('tracker');
+    } catch (error) {
+      console.error('Error logging out:', error);
     }
   };
 
@@ -105,13 +143,40 @@ function App() {
     );
   };
 
+  if (isLoading) {
+    return (
+      <SafeAreaView style={styles.container}>
+        <StatusBar barStyle={isDarkMode ? 'light-content' : 'dark-content'} />
+        <View style={styles.loadingContainer}>
+          <Text style={styles.loadingText}>Loading...</Text>
+        </View>
+      </SafeAreaView>
+    );
+  }
+
+  if (!user) {
+    return (
+      <SafeAreaView style={styles.container}>
+        <StatusBar barStyle={isDarkMode ? 'light-content' : 'dark-content'} />
+        <LoginScreen onLoginSuccess={handleLoginSuccess} />
+      </SafeAreaView>
+    );
+  }
+
   return (
     <SafeAreaView style={styles.container}>
       <StatusBar barStyle={isDarkMode ? 'light-content' : 'dark-content'} />
       
       {habits.length > 0 && (
         <View style={styles.header}>
-          <Text style={styles.appTitle}>Mini Habit Tracker</Text>
+          <View style={styles.headerTop}>
+            <Text style={styles.appTitle}>Mini Habit Tracker</Text>
+            <TouchableOpacity style={styles.userButton} onPress={handleLogout}>
+              <Text style={styles.userButtonText}>
+                {user.name} • Logout
+              </Text>
+            </TouchableOpacity>
+          </View>
           <View style={styles.navigation}>
             <TouchableOpacity
               style={[styles.navButton, currentView === 'tracker' && styles.activeNavButton]}
@@ -153,6 +218,15 @@ const styles = StyleSheet.create({
     flex: 1,
     backgroundColor: '#f5f5f5',
   },
+  loadingContainer: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  loadingText: {
+    fontSize: 16,
+    color: '#666',
+  },
   header: {
     backgroundColor: 'white',
     paddingHorizontal: 20,
@@ -160,11 +234,22 @@ const styles = StyleSheet.create({
     borderBottomWidth: 1,
     borderBottomColor: '#eee',
   },
+  headerTop: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: 15,
+  },
   appTitle: {
     fontSize: 20,
     fontWeight: 'bold',
-    textAlign: 'center',
-    marginBottom: 15,
+  },
+  userButton: {
+    padding: 5,
+  },
+  userButtonText: {
+    fontSize: 12,
+    color: '#666',
   },
   navigation: {
     flexDirection: 'row',
