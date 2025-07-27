@@ -11,7 +11,8 @@ import {
 import { Habit, HabitEntry } from './src/types';
 import { HabitSetup } from './src/components/HabitSetup';
 import { HabitTracker } from './src/components/HabitTracker';
-import { HabitSummary } from './src/components/HabitSummary';
+import { HabitDashboard } from './src/components/HabitDashboard';
+import { SummaryContainer } from './src/components/SummaryContainer';
 import { LoginScreen } from './src/components/LoginScreen';
 import { StorageService } from './src/services/storage';
 import { AuthService, User } from './src/services/auth';
@@ -20,7 +21,7 @@ function App() {
   const isDarkMode = useColorScheme() === 'dark';
   const [habits, setHabits] = useState<Habit[]>([]);
   const [entries, setEntries] = useState<HabitEntry[]>([]);
-  const [currentView, setCurrentView] = useState<'setup' | 'tracker' | 'summary'>('tracker');
+  const [currentView, setCurrentView] = useState<'dashboard' | 'setup' | 'tracker' | 'summary'>('dashboard');
   const [selectedHabit, setSelectedHabit] = useState<Habit | null>(null);
   const [user, setUser] = useState<User | null>(null);
   const [isLoading, setIsLoading] = useState(true);
@@ -72,7 +73,7 @@ function App() {
       setHabits([]);
       setEntries([]);
       setSelectedHabit(null);
-      setCurrentView('tracker');
+      setCurrentView('dashboard');
     } catch (error) {
       console.error('Error logging out:', error);
     }
@@ -83,7 +84,7 @@ function App() {
       await StorageService.saveHabit(habit);
       setHabits([...habits, habit]);
       setSelectedHabit(habit);
-      setCurrentView('tracker');
+      setCurrentView('dashboard');
     } catch (error) {
       console.error('Error creating habit:', error);
     }
@@ -116,6 +117,17 @@ function App() {
       return <HabitSetup onHabitCreate={handleHabitCreate} />;
     }
 
+    if (currentView === 'dashboard') {
+      return (
+        <HabitDashboard
+          habits={habits}
+          entries={entries}
+          onEntryAdd={handleEntryAdd}
+          onEntryUpdate={handleEntryUpdate}
+        />
+      );
+    }
+
     if (currentView === 'tracker' && selectedHabit) {
       return (
         <HabitTracker
@@ -127,11 +139,11 @@ function App() {
       );
     }
 
-    if (currentView === 'summary' && selectedHabit) {
+    if (currentView === 'summary') {
       return (
-        <HabitSummary
-          habit={selectedHabit}
-          entries={entries.filter(e => e.habitId === selectedHabit.id)}
+        <SummaryContainer
+          habits={habits}
+          entries={entries}
         />
       );
     }
@@ -179,11 +191,11 @@ function App() {
           </View>
           <View style={styles.navigation}>
             <TouchableOpacity
-              style={[styles.navButton, currentView === 'tracker' && styles.activeNavButton]}
-              onPress={() => setCurrentView('tracker')}
+              style={[styles.navButton, currentView === 'dashboard' && styles.activeNavButton]}
+              onPress={() => setCurrentView('dashboard')}
             >
-              <Text style={[styles.navButtonText, currentView === 'tracker' && styles.activeNavButtonText]}>
-                Track
+              <Text style={[styles.navButtonText, currentView === 'dashboard' && styles.activeNavButtonText]}>
+                Today
               </Text>
             </TouchableOpacity>
             <TouchableOpacity
