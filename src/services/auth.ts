@@ -1,4 +1,4 @@
-import { GoogleSignin, statusCodes } from '@react-native-google-signin/google-signin';
+import { GoogleSignin } from '@react-native-google-signin/google-signin';
 import * as Keychain from 'react-native-keychain';
 
 export interface User {
@@ -22,32 +22,29 @@ export class AuthService {
 
   static async signIn(): Promise<User | null> {
     try {
-      await GoogleSignin.hasPlayServices();
-      const userInfo = await GoogleSignin.signIn();
+      // For now, Google Sign-In is disabled until proper configuration
+      // TODO: Set up Google Cloud Console and configure webClientId
+      throw new Error('Google Sign-In temporarily disabled - please continue as guest');
       
-      if (userInfo && userInfo.user) {
-        const user: User = {
-          id: userInfo.user.id,
-          name: userInfo.user.name || '',
-          email: userInfo.user.email,
-          photo: userInfo.user.photo || undefined,
-        };
-        
-        await this.storeUserInfo(user);
-        return user;
-      }
-      
-      return null;
+      // Uncomment and configure when ready:
+      // await GoogleSignin.hasPlayServices();
+      // const userInfo = await GoogleSignin.signIn();
+      // 
+      // if (userInfo && userInfo.user) {
+      //   const user: User = {
+      //     id: userInfo.user.id,
+      //     name: userInfo.user.name || '',
+      //     email: userInfo.user.email,
+      //     photo: userInfo.user.photo || undefined,
+      //   };
+      //   
+      //   await this.storeUserInfo(user);
+      //   return user;
+      // }
+      // 
+      // return null;
     } catch (error: any) {
-      if (error.code === statusCodes.SIGN_IN_CANCELLED) {
-        console.log('User cancelled sign in');
-      } else if (error.code === statusCodes.IN_PROGRESS) {
-        console.log('Sign in is in progress');
-      } else if (error.code === statusCodes.PLAY_SERVICES_NOT_AVAILABLE) {
-        console.log('Play services not available');
-      } else {
-        console.error('Sign in error:', error);
-      }
+      console.log('Google Sign-In not configured yet, using guest mode');
       return null;
     }
   }

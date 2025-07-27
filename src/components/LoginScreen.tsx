@@ -23,11 +23,25 @@ export const LoginScreen: React.FC<LoginScreenProps> = ({ onLoginSuccess }) => {
       if (user) {
         onLoginSuccess(user);
       } else {
-        Alert.alert('Sign In Failed', 'Unable to sign in with Google. Please try again.');
+        Alert.alert(
+          'Google Sign-In Not Available', 
+          'Google Sign-In is not configured yet. Please continue as guest to use the app.',
+          [
+            { text: 'Continue as Guest', onPress: handleSkipLogin },
+            { text: 'OK' }
+          ]
+        );
       }
     } catch (error) {
       console.error('Login error:', error);
-      Alert.alert('Error', 'An error occurred during sign in. Please try again.');
+      Alert.alert(
+        'Google Sign-In Not Available', 
+        'Google Sign-In is not configured yet. Please continue as guest to use the app.',
+        [
+          { text: 'Continue as Guest', onPress: handleSkipLogin },
+          { text: 'OK' }
+        ]
+      );
     } finally {
       setIsLoading(false);
     }
@@ -57,6 +71,14 @@ export const LoginScreen: React.FC<LoginScreenProps> = ({ onLoginSuccess }) => {
         
         <View style={styles.loginSection}>
           <TouchableOpacity 
+            style={styles.guestButton}
+            onPress={handleSkipLogin}
+            disabled={isLoading}
+          >
+            <Text style={styles.guestButtonText}>Start Using App</Text>
+          </TouchableOpacity>
+          
+          <TouchableOpacity 
             style={styles.googleButton}
             onPress={handleGoogleSignIn}
             disabled={isLoading}
@@ -73,16 +95,8 @@ export const LoginScreen: React.FC<LoginScreenProps> = ({ onLoginSuccess }) => {
             )}
           </TouchableOpacity>
           
-          <TouchableOpacity 
-            style={styles.skipButton}
-            onPress={handleSkipLogin}
-            disabled={isLoading}
-          >
-            <Text style={styles.skipButtonText}>Continue as Guest</Text>
-          </TouchableOpacity>
-          
           <Text style={styles.note}>
-            Sign in to sync your habits across devices
+            Google Sign-In coming soon! For now, use the app without an account.
           </Text>
         </View>
       </View>
@@ -126,6 +140,21 @@ const styles = StyleSheet.create({
   },
   loginSection: {
     alignItems: 'center',
+  },
+  guestButton: {
+    backgroundColor: '#4CAF50',
+    paddingVertical: 15,
+    paddingHorizontal: 30,
+    borderRadius: 8,
+    marginBottom: 20,
+    minWidth: 200,
+    justifyContent: 'center',
+  },
+  guestButtonText: {
+    color: 'white',
+    fontSize: 18,
+    fontWeight: 'bold',
+    textAlign: 'center',
   },
   googleButton: {
     flexDirection: 'row',

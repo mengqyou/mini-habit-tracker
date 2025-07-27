@@ -7,6 +7,8 @@ import {
   StyleSheet,
   ScrollView,
   Alert,
+  KeyboardAvoidingView,
+  Platform,
 } from 'react-native';
 import { Habit, HabitLevel } from '../types';
 
@@ -56,8 +58,17 @@ export const HabitSetup: React.FC<HabitSetupProps> = ({ onHabitCreate }) => {
   };
 
   return (
-    <ScrollView style={styles.container}>
-      <Text style={styles.title}>Create Your Habit</Text>
+    <KeyboardAvoidingView 
+      style={styles.container} 
+      behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+    >
+      <ScrollView 
+        style={styles.scrollContainer}
+        contentContainerStyle={styles.contentContainer}
+        keyboardShouldPersistTaps="handled"
+        showsVerticalScrollIndicator={false}
+      >
+        <Text style={styles.title}>Create Your Habit</Text>
       
       <View style={styles.section}>
         <Text style={styles.label}>Habit Name *</Text>
@@ -109,18 +120,25 @@ export const HabitSetup: React.FC<HabitSetupProps> = ({ onHabitCreate }) => {
         </View>
       ))}
 
-      <TouchableOpacity style={styles.createButton} onPress={createHabit}>
-        <Text style={styles.createButtonText}>Create Habit</Text>
-      </TouchableOpacity>
-    </ScrollView>
+        <TouchableOpacity style={styles.createButton} onPress={createHabit}>
+          <Text style={styles.createButtonText}>Create Habit</Text>
+        </TouchableOpacity>
+      </ScrollView>
+    </KeyboardAvoidingView>
   );
 };
 
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    padding: 20,
     backgroundColor: '#f5f5f5',
+  },
+  scrollContainer: {
+    flex: 1,
+  },
+  contentContainer: {
+    padding: 20,
+    paddingBottom: 100, // Extra padding for keyboard
   },
   title: {
     fontSize: 24,
