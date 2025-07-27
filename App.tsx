@@ -27,6 +27,10 @@ function App() {
   const [user, setUser] = useState<User | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [useFirebase, setUseFirebase] = useState(false);
+  const [firebaseUnsubscribers, setFirebaseUnsubscribers] = useState<{
+    unsubscribeHabits?: () => void;
+    unsubscribeEntries?: () => void;
+  }>({});
 
   useEffect(() => {
     initializeApp();
@@ -38,16 +42,28 @@ function App() {
       
       // Set up Firebase auth state listener
       const unsubscribe = FirebaseAuthService.onAuthStateChanged(async (firebaseUser) => {
+        // Clean up previous Firebase listeners
+        if (firebaseUnsubscribers.unsubscribeHabits) {
+          firebaseUnsubscribers.unsubscribeHabits();
+        }
+        if (firebaseUnsubscribers.unsubscribeEntries) {
+          firebaseUnsubscribers.unsubscribeEntries();
+        }
+
         if (firebaseUser && !firebaseUser.isGuest) {
           setUser(firebaseUser);
           setUseFirebase(true);
-          await loadFirebaseData(firebaseUser.id);
+          const unsubscribers = await loadFirebaseData(firebaseUser.id);
+          if (unsubscribers) {
+            setFirebaseUnsubscribers(unsubscribers);
+          }
         } else {
           const currentUser = FirebaseAuthService.getCurrentUser();
           setUser(currentUser);
           if (currentUser) {
             await loadLocalData();
           }
+          setFirebaseUnsubscribers({});
         }
         setIsLoading(false);
       });
@@ -77,16 +93,23 @@ function App() {
 
   const loadFirebaseData = async (userId: string) => {
     try {
-      const loadedHabits = await FirebaseStorageService.getHabits(userId);
-      const loadedEntries = await FirebaseStorageService.getEntries(userId);
-      setHabits(loadedHabits);
-      setEntries(loadedEntries);
-      
-      if (loadedHabits.length > 0 && !selectedHabit) {
-        setSelectedHabit(loadedHabits[0]);
-      }
+      // Set up real-time listeners for habits and entries
+      const unsubscribeHabits = FirebaseStorageService.subscribeToHabits(userId, (loadedHabits) => {
+        setHabits(loadedHabits);
+        if (loadedHabits.length > 0 && !selectedHabit) {
+          setSelectedHabit(loadedHabits[0]);
+        }
+      });
+
+      const unsubscribeEntries = FirebaseStorageService.subscribeToEntries(userId, (loadedEntries) => {
+        setEntries(loadedEntries);
+      });
+
+      // Store cleanup functions
+      return { unsubscribeHabits, unsubscribeEntries };
     } catch (error) {
-      console.error('Error loading Firebase data:', error);
+      console.error('Error setting up Firebase listeners:', error);
+      return null;
     }
   };
 
@@ -116,7 +139,10 @@ function App() {
         }
       }
       
-      await loadFirebaseData(loggedInUser.id);
+      const unsubscribers = await loadFirebaseData(loggedInUser.id);
+      if (unsubscribers) {
+        setFirebaseUnsubscribers(unsubscribers);
+      }
     } else {
       setUseFirebase(false);
       await loadLocalData();
@@ -125,12 +151,21 @@ function App() {
 
   const handleLogout = async () => {
     try {
+      // Clean up Firebase listeners
+      if (firebaseUnsubscribers.unsubscribeHabits) {
+        firebaseUnsubscribers.unsubscribeHabits();
+      }
+      if (firebaseUnsubscribers.unsubscribeEntries) {
+        firebaseUnsubscribers.unsubscribeEntries();
+      }
+      
       await FirebaseAuthService.signOut();
       setUser(null);
       setHabits([]);
       setEntries([]);
       setSelectedHabit(null);
       setUseFirebase(false);
+      setFirebaseUnsubscribers({});
       setCurrentView('dashboard');
     } catch (error) {
       console.error('Error logging out:', error);
@@ -141,7 +176,7 @@ function App() {
     try {
       if (useFirebase && user && !user.isGuest) {
         await FirebaseStorageService.saveHabit(user.id, habit);
-        // Firebase real-time listener will update the state
+        // Firebase real-time listener will automatically update the state
       } else {
         await StorageService.saveHabit(habit);
         setHabits([...habits, habit]);
@@ -157,7 +192,7 @@ function App() {
     try {
       if (useFirebase && user && !user.isGuest) {
         await FirebaseStorageService.saveEntry(user.id, entry);
-        // Firebase real-time listener will update the state
+        // Firebase real-time listener will automatically update the state
       } else {
         await StorageService.saveEntry(entry);
         setEntries([...entries, entry]);
@@ -171,7 +206,7 @@ function App() {
     try {
       if (useFirebase && user && !user.isGuest) {
         await FirebaseStorageService.saveEntry(user.id, entry);
-        // Firebase real-time listener will update the state
+        // Firebase real-time listener will automatically update the state
       } else {
         await StorageService.saveEntry(entry);
         setEntries(entries.map(e => e.id === entry.id ? entry : e));
