@@ -1,97 +1,183 @@
-This is a new [**React Native**](https://reactnative.dev) project, bootstrapped using [`@react-native-community/cli`](https://github.com/react-native-community/cli).
+# Mini Habit Tracker
 
-# Getting Started
+A simple and effective React Native app for tracking daily mini-habits with customizable completion levels.
 
-> **Note**: Make sure you have completed the [Set Up Your Environment](https://reactnative.dev/docs/set-up-your-environment) guide before proceeding.
+## Features
 
-## Step 1: Start Metro
+✓ **Custom Habit Creation** - Define your habits with personalized completion levels  
+✓ **Daily Tracking** - Easy 3-level completion system (e.g., Basic, Good, Excellent)  
+✓ **Progress Summaries** - View your progress weekly, monthly, yearly, and total  
+✓ **Streak Tracking** - Monitor current and longest streaks  
+✓ **Google Authentication** - Sync data across devices or continue as guest  
+✓ **Local Storage** - Data persists even offline
 
-First, you will need to run **Metro**, the JavaScript build tool for React Native.
+## Screenshots
 
-To start the Metro dev server, run the following command from the root of your React Native project:
+_Screenshots will be added after first build_
 
-```sh
-# Using npm
+## Getting Started
+
+### Prerequisites
+
+- Node.js (v16 or newer)
+- React Native development environment setup
+- Android Studio (for Android development)
+- Xcode (for iOS development - macOS only)
+
+### Installation
+
+1. Clone the repository:
+```bash
+git clone <your-repo-url>
+cd MiniHabitTracker
+```
+
+2. Install dependencies:
+```bash
+npm install
+```
+
+3. For iOS (macOS only):
+```bash
+cd ios && pod install && cd ..
+```
+
+### Configuration
+
+#### Google Sign-In Setup (Optional)
+
+To enable Google authentication:
+
+1. Go to [Google Cloud Console](https://console.cloud.google.com/)
+2. Create a new project or select existing one
+3. Enable Google Sign-In API
+4. Create credentials (OAuth 2.0 client ID)
+5. Replace `YOUR_WEB_CLIENT_ID` in `src/services/auth.ts` with your actual web client ID
+
+#### Android Setup
+
+1. Add your SHA-1 fingerprint to Google Console
+2. Download `google-services.json` and place in `android/app/`
+
+#### iOS Setup
+
+1. Download `GoogleService-Info.plist` and add to iOS project
+2. Add URL scheme to `Info.plist`
+
+### Running the App
+
+#### Start Metro Bundler
+```bash
 npm start
-
-# OR using Yarn
-yarn start
 ```
 
-## Step 2: Build and run your app
-
-With Metro running, open a new terminal window/pane from the root of your React Native project, and use one of the following commands to build and run your Android or iOS app:
-
-### Android
-
-```sh
-# Using npm
+#### Run on Android
+```bash
 npm run android
-
-# OR using Yarn
-yarn android
 ```
 
-### iOS
-
-For iOS, remember to install CocoaPods dependencies (this only needs to be run on first clone or after updating native deps).
-
-The first time you create a new project, run the Ruby bundler to install CocoaPods itself:
-
-```sh
-bundle install
-```
-
-Then, and every time you update your native dependencies, run:
-
-```sh
-bundle exec pod install
-```
-
-For more information, please visit [CocoaPods Getting Started guide](https://guides.cocoapods.org/using/getting-started.html).
-
-```sh
-# Using npm
+#### Run on iOS
+```bash
 npm run ios
-
-# OR using Yarn
-yarn ios
 ```
 
-If everything is set up correctly, you should see your new app running in the Android Emulator, iOS Simulator, or your connected device.
+## Usage
 
-This is one way to run your app — you can also build it directly from Android Studio or Xcode.
+1. **First Launch**: Sign in with Google or continue as guest
+2. **Create Habit**: Tap "+ New" to create your first habit with custom levels
+3. **Daily Tracking**: Tap completion levels to log your daily progress
+4. **View Progress**: Check "Summary" tab for detailed analytics
 
-## Step 3: Modify your app
+### Example Habit Setup
 
-Now that you have successfully run the app, let's make changes!
+**Habit**: Reading Books  
+**Levels**:
+- Basic: Read 2 pages
+- Good: Read 30 pages  
+- Excellent: Read 60+ pages
 
-Open `App.tsx` in your text editor of choice and make some changes. When you save, your app will automatically update and reflect these changes — this is powered by [Fast Refresh](https://reactnative.dev/docs/fast-refresh).
+## App Architecture
 
-When you want to forcefully reload, for example to reset the state of your app, you can perform a full reload:
+```
+src/
+├── components/          # React Native components
+│   ├── HabitSetup.tsx  # Habit creation form
+│   ├── HabitTracker.tsx # Daily tracking interface
+│   ├── HabitSummary.tsx # Analytics and summaries
+│   └── LoginScreen.tsx  # Authentication screen
+├── services/           # Business logic
+│   ├── auth.ts        # Google authentication
+│   └── storage.ts     # Local data persistence
+└── types/             # TypeScript definitions
+    └── index.ts       # Data models
+```
 
-- **Android**: Press the <kbd>R</kbd> key twice or select **"Reload"** from the **Dev Menu**, accessed via <kbd>Ctrl</kbd> + <kbd>M</kbd> (Windows/Linux) or <kbd>Cmd ⌘</kbd> + <kbd>M</kbd> (macOS).
-- **iOS**: Press <kbd>R</kbd> in iOS Simulator.
+## Data Models
 
-## Congratulations! :tada:
+### Habit
+- **id**: Unique identifier
+- **name**: Habit name
+- **description**: Optional description
+- **levels**: Array of completion levels
+- **createdAt**: Creation timestamp
 
-You've successfully run and modified your React Native App. :partying_face:
+### HabitLevel
+- **id**: Unique identifier
+- **name**: Level name (e.g., "Basic")
+- **description**: What this level means
+- **value**: Numeric value for analytics
 
-### Now what?
+### HabitEntry
+- **id**: Unique identifier
+- **habitId**: Reference to habit
+- **date**: Date in YYYY-MM-DD format
+- **levelId**: Which level was completed
+- **timestamp**: Exact completion time
 
-- If you want to add this new React Native code to an existing application, check out the [Integration guide](https://reactnative.dev/docs/integration-with-existing-apps).
-- If you're curious to learn more about React Native, check out the [docs](https://reactnative.dev/docs/getting-started).
+## Contributing
 
-# Troubleshooting
+1. Fork the repository
+2. Create your feature branch (`git checkout -b feature/amazing-feature`)
+3. Commit your changes (`git commit -m 'Add some amazing feature'`)
+4. Push to the branch (`git push origin feature/amazing-feature`)
+5. Open a Pull Request
 
-If you're having issues getting the above steps to work, see the [Troubleshooting](https://reactnative.dev/docs/troubleshooting) page.
+## License
 
-# Learn More
+This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
 
-To learn more about React Native, take a look at the following resources:
+## Roadmap
 
-- [React Native Website](https://reactnative.dev) - learn more about React Native.
-- [Getting Started](https://reactnative.dev/docs/environment-setup) - an **overview** of React Native and how setup your environment.
-- [Learn the Basics](https://reactnative.dev/docs/getting-started) - a **guided tour** of the React Native **basics**.
-- [Blog](https://reactnative.dev/blog) - read the latest official React Native **Blog** posts.
-- [`@facebook/react-native`](https://github.com/facebook/react-native) - the Open Source; GitHub **repository** for React Native.
+- [ ] Dark mode support
+- [ ] Habit editing and deletion
+- [ ] Export data to CSV
+- [ ] Habit categories and tags
+- [ ] Notification reminders
+- [ ] Multiple habits support
+- [ ] Cloud sync improvements
+- [ ] iOS app release
+
+## Troubleshooting
+
+### Common Issues
+
+**Build Errors**:
+- Ensure all dependencies are installed
+- Clear Metro cache: `npx react-native start --reset-cache`
+- Clean build: `cd android && ./gradlew clean && cd ..`
+
+**Google Sign-In Issues**:
+- Verify SHA-1 fingerprint in Google Console
+- Check `google-services.json` is in correct location
+- Ensure OAuth client ID is correctly configured
+
+## Support
+
+If you encounter any issues or have questions:
+1. Check the [Issues](../../issues) page
+2. Create a new issue with detailed description
+3. Provide logs and device information
+
+---
+
+Built with ❤️ using React Native
