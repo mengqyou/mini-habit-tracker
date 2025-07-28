@@ -14,7 +14,7 @@ export class FirebaseAuthService {
     try {
       // Configure Google Sign-In
       GoogleSignin.configure({
-        webClientId: 'YOUR_WEB_CLIENT_ID', // You'll get this from Firebase Console
+        webClientId: '523546718810-2a1k7bgtavglerirheigtibpagm4g4ia.apps.googleusercontent.com',
         offlineAccess: true,
       });
     } catch (error) {

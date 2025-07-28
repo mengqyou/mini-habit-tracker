@@ -1,36 +1,26 @@
 {
   "project_info": {
-    "project_number": "123456789",
-    "project_id": "mini-habit-tracker-temp",
-    "storage_bucket": "mini-habit-tracker-temp.appspot.com"
+    "project_number": "523546718810",
+    "project_id": "minihabittracker-b304c",
+    "storage_bucket": "minihabittracker-b304c.firebasestorage.app"
   },
   "client": [
     {
       "client_info": {
-        "mobilesdk_app_id": "1:123456789:android:abcdef",
+        "mobilesdk_app_id": "1:523546718810:android:58feb0c31c6addbe9d9e63",
         "android_client_info": {
           "package_name": "com.minihabittracker"
         }
       },
-      "oauth_client": [
-        {
-          "client_id": "123456789-abcdef.apps.googleusercontent.com",
-          "client_type": 3
-        }
-      ],
+      "oauth_client": [],
       "api_key": [
         {
-          "current_key": "temp-api-key"
+          "current_key": "AIzaSyBmYu_gXSqAC_GIwqRERvCsdl7Lli9QwCk"
         }
       ],
       "services": {
         "appinvite_service": {
-          "other_platform_oauth_client": [
-            {
-              "client_id": "123456789-abcdef.apps.googleusercontent.com",
-              "client_type": 3
-            }
-          ]
+          "other_platform_oauth_client": []
         }
       }
     }
