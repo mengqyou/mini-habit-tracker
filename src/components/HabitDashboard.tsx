@@ -77,6 +77,15 @@ export const HabitDashboard: React.FC<HabitDashboardProps> = ({
     return level;
   };
 
+  const getLevelColor = (levelIndex: number) => {
+    const colors = [
+      '#4CAF50', // Level 1: Green
+      '#F44336', // Level 2: Red
+      '#9C27B0', // Level 3: Purple
+    ];
+    return colors[levelIndex] || '#007AFF';
+  };
+
   const getStreakCount = (habit: Habit) => {
     const habitEntries = entries
       .filter(e => e.habitId === habit.id)
@@ -129,6 +138,7 @@ export const HabitDashboard: React.FC<HabitDashboardProps> = ({
         {habits.map((habit) => {
           const completedLevel = getCompletionStatus(habit);
           const streak = getStreakCount(habit);
+          const completedLevelIndex = completedLevel ? habit.levels.findIndex(l => l.id === completedLevel.id) : -1;
           
           return (
             <View key={habit.id} style={styles.habitCard}>
@@ -143,7 +153,10 @@ export const HabitDashboard: React.FC<HabitDashboardProps> = ({
                 </View>
                 
                 {completedLevel && (
-                  <View style={styles.completedBadge}>
+                  <View style={[
+                    styles.completedBadge,
+                    { backgroundColor: getLevelColor(completedLevelIndex) }
+                  ]}>
                     <Text style={styles.completedBadgeText}>
                       ✅ {completedLevel.name}
                     </Text>
@@ -156,7 +169,7 @@ export const HabitDashboard: React.FC<HabitDashboardProps> = ({
               )}
 
               <View style={styles.levelsContainer}>
-                {habit.levels.map((level) => {
+                {habit.levels.map((level, index) => {
                   const isSelected = completedLevel?.id === level.id;
                   
                   return (
@@ -164,7 +177,10 @@ export const HabitDashboard: React.FC<HabitDashboardProps> = ({
                       key={level.id}
                       style={[
                         styles.levelButton,
-                        isSelected && styles.selectedLevelButton,
+                        isSelected && {
+                          backgroundColor: getLevelColor(index),
+                          borderColor: getLevelColor(index),
+                        },
                       ]}
                       onPress={() => handleLevelSelect(habit, level.id)}
                     >

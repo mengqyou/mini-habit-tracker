@@ -29,6 +29,15 @@ export const HabitTracker: React.FC<HabitTrackerProps> = ({
     setTodayEntry(entry || null);
   }, [entries, today, habit.id]);
 
+  const getLevelColor = (levelIndex: number) => {
+    const colors = [
+      '#4CAF50', // Level 1: Green
+      '#F44336', // Level 2: Red
+      '#9C27B0', // Level 3: Purple
+    ];
+    return colors[levelIndex] || '#007AFF';
+  };
+
   const handleLevelSelect = (levelId: string) => {
     const level = habit.levels.find(l => l.id === levelId);
     if (!level) return;
@@ -87,12 +96,15 @@ export const HabitTracker: React.FC<HabitTrackerProps> = ({
       )}
 
       <View style={styles.levelsContainer}>
-        {habit.levels.map((level) => (
+        {habit.levels.map((level, index) => (
           <TouchableOpacity
             key={level.id}
             style={[
               styles.levelButton,
-              todayEntry?.levelId === level.id && styles.selectedLevelButton,
+              todayEntry?.levelId === level.id && {
+                backgroundColor: getLevelColor(index),
+                borderColor: getLevelColor(index),
+              },
             ]}
             onPress={() => handleLevelSelect(level.id)}
           >
