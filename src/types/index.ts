@@ -5,12 +5,15 @@ export interface HabitLevel {
   value: number;
 }
 
+export type HabitStatus = 'active' | 'inactive' | 'built-in';
+
 export interface Habit {
   id: string;
   name: string;
   description: string;
   levels: HabitLevel[];
   createdAt: Date;
+  status?: HabitStatus; // Optional for backward compatibility
 }
 
 export interface HabitEntry {

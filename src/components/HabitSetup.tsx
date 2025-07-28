@@ -14,16 +14,28 @@ import { Habit, HabitLevel } from '../types';
 
 interface HabitSetupProps {
   onHabitCreate: (habit: Habit) => void;
+  onHabitUpdate?: (habit: Habit) => void;
+  editingHabit?: Habit | null;
 }
 
-export const HabitSetup: React.FC<HabitSetupProps> = ({ onHabitCreate }) => {
-  const [habitName, setHabitName] = useState('');
-  const [habitDescription, setHabitDescription] = useState('');
-  const [levels, setLevels] = useState<Omit<HabitLevel, 'id'>[]>([
-    { name: 'Basic', description: '', value: 1 },
-    { name: 'Good', description: '', value: 2 },
-    { name: 'Excellent', description: '', value: 3 },
-  ]);
+export const HabitSetup: React.FC<HabitSetupProps> = ({ 
+  onHabitCreate, 
+  onHabitUpdate, 
+  editingHabit 
+}) => {
+  const [habitName, setHabitName] = useState(editingHabit?.name || '');
+  const [habitDescription, setHabitDescription] = useState(editingHabit?.description || '');
+  const [levels, setLevels] = useState<Omit<HabitLevel, 'id'>[]>(
+    editingHabit?.levels.map(level => ({
+      name: level.name,
+      description: level.description,
+      value: level.value
+    })) || [
+      { name: 'Basic', description: '', value: 1 },
+      { name: 'Good', description: '', value: 2 },
+      { name: 'Excellent', description: '', value: 3 },
+    ]
+  );
 
   const updateLevel = (index: number, field: keyof Omit<HabitLevel, 'id'>, value: string | number) => {
     const newLevels = [...levels];
@@ -31,7 +43,7 @@ export const HabitSetup: React.FC<HabitSetupProps> = ({ onHabitCreate }) => {
     setLevels(newLevels);
   };
 
-  const createHabit = () => {
+  const saveHabit = () => {
     if (!habitName.trim()) {
       Alert.alert('Error', 'Please enter a habit name');
       return;
@@ -43,18 +55,33 @@ export const HabitSetup: React.FC<HabitSetupProps> = ({ onHabitCreate }) => {
       return;
     }
 
-    const habit: Habit = {
-      id: Date.now().toString(),
-      name: habitName.trim(),
-      description: habitDescription.trim(),
-      levels: levels.map((level, index) => ({
-        ...level,
-        id: `${Date.now()}-${index}`,
-      })),
-      createdAt: new Date(),
-    };
-
-    onHabitCreate(habit);
+    if (editingHabit && onHabitUpdate) {
+      // Update existing habit
+      const updatedHabit: Habit = {
+        ...editingHabit,
+        name: habitName.trim(),
+        description: habitDescription.trim(),
+        levels: levels.map((level, index) => ({
+          ...level,
+          id: editingHabit.levels[index]?.id || `${Date.now()}-${index}`,
+        })),
+      };
+      onHabitUpdate(updatedHabit);
+    } else {
+      // Create new habit
+      const habit: Habit = {
+        id: Date.now().toString(),
+        name: habitName.trim(),
+        description: habitDescription.trim(),
+        levels: levels.map((level, index) => ({
+          ...level,
+          id: `${Date.now()}-${index}`,
+        })),
+        createdAt: new Date(),
+        status: 'active',
+      };
+      onHabitCreate(habit);
+    }
   };
 
   return (
@@ -68,7 +95,9 @@ export const HabitSetup: React.FC<HabitSetupProps> = ({ onHabitCreate }) => {
         keyboardShouldPersistTaps="handled"
         showsVerticalScrollIndicator={false}
       >
-        <Text style={styles.title}>Create Your Habit</Text>
+        <Text style={styles.title}>
+          {editingHabit ? 'Edit Your Habit' : 'Create Your Habit'}
+        </Text>
       
       <View style={styles.section}>
         <Text style={styles.label}>Habit Name *</Text>
@@ -120,8 +149,10 @@ export const HabitSetup: React.FC<HabitSetupProps> = ({ onHabitCreate }) => {
         </View>
       ))}
 
-        <TouchableOpacity style={styles.createButton} onPress={createHabit}>
-          <Text style={styles.createButtonText}>Create Habit</Text>
+        <TouchableOpacity style={styles.createButton} onPress={saveHabit}>
+          <Text style={styles.createButtonText}>
+            {editingHabit ? 'Update Habit' : 'Create Habit'}
+          </Text>
         </TouchableOpacity>
       </ScrollView>
     </KeyboardAvoidingView>

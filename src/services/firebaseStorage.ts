@@ -1,4 +1,4 @@
-import firestore from '@react-native-firebase/firestore';
+import firestore, { FirebaseFirestoreTypes } from '@react-native-firebase/firestore';
 import { Habit, HabitEntry } from '../types';
 
 export class FirebaseStorageService {
@@ -9,11 +9,19 @@ export class FirebaseStorageService {
   // ===== USER MANAGEMENT =====
   static async createUserDocument(userId: string, userData: { name: string; email: string }): Promise<void> {
     try {
+      // Use set with merge to update existing document or create new one
       await this.usersCollection.doc(userId).set({
         ...userData,
-        createdAt: firestore.FieldValue.serverTimestamp(),
-        lastLoginAt: firestore.FieldValue.serverTimestamp(),
-      });
+        lastLoginAt: new Date(),
+      }, { merge: true });
+      
+      // Set createdAt only if it's a new document
+      const userDoc = await this.usersCollection.doc(userId).get();
+      if (!userDoc.data()?.createdAt) {
+        await this.usersCollection.doc(userId).update({
+          createdAt: new Date(),
+        });
+      }
     } catch (error) {
       console.error('Error creating user document:', error);
       throw error;
@@ -23,7 +31,7 @@ export class FirebaseStorageService {
   static async updateUserLastLogin(userId: string): Promise<void> {
     try {
       await this.usersCollection.doc(userId).update({
-        lastLoginAt: firestore.FieldValue.serverTimestamp(),
+        lastLoginAt: new Date(),
       });
     } catch (error) {
       console.error('Error updating last login:', error);
@@ -56,26 +64,50 @@ export class FirebaseStorageService {
 
   static async saveHabit(userId: string, habit: Habit): Promise<void> {
     try {
+      console.log('🔵 [SaveHabit] Starting habit save process...');
+      console.log('🔍 [SaveHabit] userId:', userId);
+      console.log('🔍 [SaveHabit] habit:', { id: habit.id, name: habit.name });
+      
+      // First, verify that the user document exists
+      console.log('🔵 [SaveHabit] Verifying user document exists...');
+      const userDoc = await this.usersCollection.doc(userId).get();
+      if (!userDoc.exists) {
+        console.error('❌ [SaveHabit] User document does not exist for userId:', userId);
+        throw new Error(`User document not found for user ${userId}`);
+      }
+      console.log('✅ [SaveHabit] User document exists');
+      
       const habitData = {
         userId,
         name: habit.name,
         description: habit.description,
         levels: habit.levels,
-        createdAt: firestore.FieldValue.serverTimestamp(),
+        createdAt: new Date(),
       };
+      console.log('🔍 [SaveHabit] habitData prepared:', habitData);
 
-      if (habit.id && habit.id !== Date.now().toString()) {
-        // Update existing habit
+      // Check if this is a new habit (timestamp-based ID) or existing habit (Firestore document ID)
+      const isNewHabit = !habit.id || habit.id.length <= 15; // Timestamp IDs are ~13 chars, Firestore IDs are longer
+      console.log('🔍 [SaveHabit] isNewHabit:', isNewHabit, 'habit.id length:', habit.id?.length);
+      
+      if (!isNewHabit) {
+        // Update existing habit (has a real Firestore document ID)
+        console.log('🔵 [SaveHabit] Updating existing habit...');
         await this.habitsCollection.doc(habit.id).update({
           ...habitData,
-          updatedAt: firestore.FieldValue.serverTimestamp(),
+          updatedAt: new Date(),
         });
+        console.log('✅ [SaveHabit] Habit updated successfully');
       } else {
-        // Create new habit
-        await this.habitsCollection.add(habitData);
+        // Create new habit (has timestamp ID or no ID)
+        console.log('🔵 [SaveHabit] Creating new habit...');
+        const docRef = await this.habitsCollection.add(habitData);
+        console.log('✅ [SaveHabit] Habit created successfully with ID:', docRef.id);
       }
     } catch (error) {
-      console.error('Error saving habit:', error);
+      console.error('❌ [SaveHabit] Error saving habit:', error);
+      console.error('❌ [SaveHabit] Error code:', error.code);
+      console.error('❌ [SaveHabit] Error message:', error.message);
       throw error;
     }
   }
@@ -133,14 +165,14 @@ export class FirebaseStorageService {
         habitId: entry.habitId,
         date: entry.date,
         levelId: entry.levelId,
-        timestamp: firestore.FieldValue.serverTimestamp(),
+        timestamp: new Date(),
       };
 
       if (entry.id && entry.id !== Date.now().toString()) {
         // Update existing entry
         await this.entriesCollection.doc(entry.id).update({
           ...entryData,
-          updatedAt: firestore.FieldValue.serverTimestamp(),
+          updatedAt: new Date(),
         });
       } else {
         // Create new entry
@@ -246,7 +278,7 @@ export class FirebaseStorageService {
           name: habit.name,
           description: habit.description,
           levels: habit.levels,
-          createdAt: firestore.Timestamp.fromDate(habit.createdAt),
+          createdAt: firestore().timestamp.fromDate(habit.createdAt),
         });
       }
       
@@ -261,7 +293,7 @@ export class FirebaseStorageService {
             habitId: newHabitId,
             date: entry.date,
             levelId: entry.levelId,
-            timestamp: firestore.Timestamp.fromDate(entry.timestamp),
+            timestamp: firestore().timestamp.fromDate(entry.timestamp),
           });
         }
       }

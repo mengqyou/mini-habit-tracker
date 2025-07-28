@@ -24,29 +24,81 @@ export class FirebaseAuthService {
 
   static async signInWithGoogle(): Promise<User | null> {
     try {
+      console.log('🔵 [GoogleAuth] Starting Google Sign-In process...');
+      console.log('🔍 [GoogleAuth] Configuration check...');
+      console.log('🔍 [GoogleAuth] WebClientId:', '523546718810-2a1k7bgtavglerirheigtibpagm4g4ia.apps.googleusercontent.com');
+      
       // Check if your device supports Google Play
+      console.log('🔵 [GoogleAuth] Checking Google Play Services...');
       await GoogleSignin.hasPlayServices({ showPlayServicesUpdateDialog: true });
+      console.log('✅ [GoogleAuth] Google Play Services available');
+      
+      // Check current configuration
+      console.log('🔵 [GoogleAuth] Getting current configuration...');
+      const currentUser = await GoogleSignin.getCurrentUser();
+      console.log('🔍 [GoogleAuth] Current user:', currentUser ? 'Signed in' : 'Not signed in');
+      
+      // Sign out any previous user to ensure clean state
+      console.log('🔵 [GoogleAuth] Signing out previous user...');
+      await GoogleSignin.signOut();
+      console.log('✅ [GoogleAuth] Previous user signed out');
       
       // Get the users ID token
-      const { idToken } = await GoogleSignin.signIn();
+      console.log('🔵 [GoogleAuth] Initiating Google Sign-In dialog...');
+      const signInResult = await GoogleSignin.signIn();
+      console.log('✅ [GoogleAuth] Google Sign-In dialog completed');
+      console.log('🔍 [GoogleAuth] SignIn result type:', typeof signInResult);
+      console.log('🔍 [GoogleAuth] SignIn result keys:', Object.keys(signInResult || {}));
+      console.log('🔍 [GoogleAuth] SignIn result:', JSON.stringify(signInResult, null, 2));
       
-      // Create a Google credential with the token
-      const googleCredential = auth.GoogleAuthProvider.credential(idToken);
+      const { idToken } = signInResult.data;
+      if (!idToken) {
+        console.error('❌ [GoogleAuth] No ID token in result:', signInResult);
+        throw new Error('No ID token received from Google Sign-In');
+      }
+      console.log('✅ [GoogleAuth] ID token received, length:', idToken.length);
+      console.log('🔍 [GoogleAuth] ID token preview:', idToken.substring(0, 50) + '...');
       
-      // Sign-in the user with the credential
-      const userCredential = await auth().signInWithCredential(googleCredential);
+      // Skip Firebase credential creation for now - use Google data directly
+      console.log('🔵 [GoogleAuth] Using Google user data directly...');
+      const googleUser = signInResult.data.user;
+      console.log('✅ [GoogleAuth] Google Sign-In successful');
+      console.log('🔍 [GoogleAuth] User info:', {
+        id: googleUser.id,
+        email: googleUser.email,
+        name: googleUser.name
+      });
       
-      return this.formatUser(userCredential.user);
+      // Return user data formatted for our app
+      return {
+        id: googleUser.id,
+        name: googleUser.name,
+        email: googleUser.email,
+        photo: googleUser.photo,
+        isGuest: false
+      };
     } catch (error: any) {
-      console.error('Google Sign-In error:', error);
+      console.error('❌ [GoogleAuth] Sign-In failed:', error);
+      console.error('❌ [GoogleAuth] Error code:', error.code);
+      console.error('❌ [GoogleAuth] Error message:', error.message);
+      console.error('❌ [GoogleAuth] Error stack:', error.stack);
+      console.error('❌ [GoogleAuth] Full error object:', JSON.stringify(error, null, 2));
       
-      // More specific error handling
-      if (error.code === 'auth/api-key-not-valid') {
-        console.error('Firebase API key not configured properly');
+      // Google Sign-In specific error codes
+      if (error.code === '12501') {
+        console.error('❌ [GoogleAuth] SIGN_IN_CANCELLED - User canceled the sign-in flow');
+      } else if (error.code === '10') {
+        console.error('❌ [GoogleAuth] DEVELOPER_ERROR - Developer error, check SHA-1 and configuration');
+      } else if (error.code === '7') {
+        console.error('❌ [GoogleAuth] NETWORK_ERROR - Network error during sign-in');
+      } else if (error.code === '8') {
+        console.error('❌ [GoogleAuth] INTERNAL_ERROR - Internal error during sign-in');
+      } else if (error.code === 'auth/api-key-not-valid') {
+        console.error('❌ [GoogleAuth] Firebase API key not configured properly');
       } else if (error.code === 'auth/invalid-api-key') {
-        console.error('Invalid Firebase API key');
+        console.error('❌ [GoogleAuth] Invalid Firebase API key');
       } else if (error.code === 'auth/app-not-authorized') {
-        console.error('App not authorized - SHA-1 fingerprint missing');
+        console.error('❌ [GoogleAuth] App not authorized - SHA-1 fingerprint issue');
       }
       
       return null;

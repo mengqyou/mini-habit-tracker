@@ -7,13 +7,17 @@ import {
   ScrollView,
   Alert,
 } from 'react-native';
-import { Habit, HabitEntry } from '../types';
+import { Habit, HabitEntry, HabitStatus } from '../types';
 
 interface HabitDashboardProps {
   habits: Habit[];
   entries: HabitEntry[];
   onEntryAdd: (entry: HabitEntry) => void;
   onEntryUpdate: (entry: HabitEntry) => void;
+  onHabitEdit?: (habit: Habit) => void;
+  onHabitDelete?: (habit: Habit) => void;
+  onHabitStatusChange?: (habit: Habit, newStatus: HabitStatus) => void;
+  showInactiveHabits?: boolean;
 }
 
 export const HabitDashboard: React.FC<HabitDashboardProps> = ({
@@ -21,6 +25,10 @@ export const HabitDashboard: React.FC<HabitDashboardProps> = ({
   entries,
   onEntryAdd,
   onEntryUpdate,
+  onHabitEdit,
+  onHabitDelete,
+  onHabitStatusChange,
+  showInactiveHabits = false,
 }) => {
   const today = new Date().toISOString().split('T')[0];
   const todayFormatted = new Date().toLocaleDateString('en-US', {
@@ -33,6 +41,14 @@ export const HabitDashboard: React.FC<HabitDashboardProps> = ({
   const todayEntries = useMemo(() => {
     return entries.filter(entry => entry.date === today);
   }, [entries, today]);
+
+  const filteredHabits = useMemo(() => {
+    if (showInactiveHabits) {
+      return habits; // Show all habits
+    } else {
+      return habits.filter(habit => (habit.status || 'active') === 'active');
+    }
+  }, [habits, showInactiveHabits]);
 
   const getTodayEntryForHabit = (habitId: string) => {
     return todayEntries.find(entry => entry.habitId === habitId);
@@ -116,15 +132,70 @@ export const HabitDashboard: React.FC<HabitDashboardProps> = ({
     return streak;
   };
 
-  if (habits.length === 0) {
-    return (
-      <View style={styles.emptyContainer}>
-        <Text style={styles.emptyTitle}>No Habits Yet</Text>
-        <Text style={styles.emptyText}>
-          Tap "+ New" to create your first habit and start tracking!
-        </Text>
-      </View>
+  const handleDeleteHabit = (habit: Habit) => {
+    Alert.alert(
+      'Delete Habit',
+      `Are you sure you want to delete "${habit.name}"? This will permanently remove the habit and all its tracking data.`,
+      [
+        {
+          text: 'Cancel',
+          style: 'cancel',
+        },
+        {
+          text: 'Delete',
+          style: 'destructive',
+          onPress: () => {
+            if (onHabitDelete) {
+              onHabitDelete(habit);
+            }
+          },
+        },
+      ]
     );
+  };
+
+  const handleStatusChange = (habit: Habit) => {
+    const currentStatus = habit.status || 'active';
+    const statusOptions = [
+      { text: 'Active', value: 'active' as HabitStatus, description: 'Continue tracking this habit' },
+      { text: 'Inactive', value: 'inactive' as HabitStatus, description: 'Pause tracking but keep data' },
+      { text: 'Built-in', value: 'built-in' as HabitStatus, description: 'Habit is mastered, archive with data' },
+    ];
+
+    const buttons = statusOptions.map(option => ({
+      text: option.text + (currentStatus === option.value ? ' ✓' : ''),
+      onPress: () => {
+        if (onHabitStatusChange && currentStatus !== option.value) {
+          onHabitStatusChange(habit, option.value);
+        }
+      },
+    }));
+
+    buttons.push({ text: 'Cancel', onPress: () => {}, style: 'cancel' as const });
+
+    Alert.alert('Change Habit Status', `Change status for "${habit.name}"`, buttons);
+  };
+
+  if (filteredHabits.length === 0) {
+    if (showInactiveHabits) {
+      return (
+        <View style={styles.emptyContainer}>
+          <Text style={styles.emptyTitle}>No Habits</Text>
+          <Text style={styles.emptyText}>
+            You don't have any habits yet. Tap "+ New" to create your first habit!
+          </Text>
+        </View>
+      );
+    } else {
+      return (
+        <View style={styles.emptyContainer}>
+          <Text style={styles.emptyTitle}>No Active Habits</Text>
+          <Text style={styles.emptyText}>
+            All your habits are inactive or built-in. Tap "All Habits" to view them, or "+ New" to create a new habit!
+          </Text>
+        </View>
+      );
+    }
   }
 
   return (
@@ -135,7 +206,7 @@ export const HabitDashboard: React.FC<HabitDashboardProps> = ({
       </View>
 
       <View style={styles.habitsContainer}>
-        {habits.map((habit) => {
+        {filteredHabits.map((habit) => {
           const completedLevel = getCompletionStatus(habit);
           const streak = getStreakCount(habit);
           const completedLevelIndex = completedLevel ? habit.levels.findIndex(l => l.id === completedLevel.id) : -1;
@@ -144,24 +215,60 @@ export const HabitDashboard: React.FC<HabitDashboardProps> = ({
             <View key={habit.id} style={styles.habitCard}>
               <View style={styles.habitHeader}>
                 <View style={styles.habitInfo}>
-                  <Text style={styles.habitName}>{habit.name}</Text>
-                  <View style={styles.streakContainer}>
-                    <Text style={styles.streakText}>
-                      🔥 {streak} day{streak !== 1 ? 's' : ''} streak
-                    </Text>
+                  <View style={styles.habitTitleRow}>
+                    <Text style={styles.habitName}>{habit.name}</Text>
+                    {completedLevel && (
+                      <View style={[
+                        styles.completedBadge,
+                        { backgroundColor: getLevelColor(completedLevelIndex) }
+                      ]}>
+                        <Text style={styles.completedBadgeText}>
+                          ✅ {completedLevel.name}
+                        </Text>
+                      </View>
+                    )}
+                    {(habit.status && habit.status !== 'active') && (
+                      <View style={styles.statusBadge}>
+                        <Text style={styles.statusBadgeText}>
+                          {habit.status === 'inactive' ? '⏸️ Inactive' : '✅ Built-in'}
+                        </Text>
+                      </View>
+                    )}
+                  </View>
+                  <View style={styles.actionsRow}>
+                    <View style={styles.streakContainer}>
+                      <Text style={styles.streakText}>
+                        🔥 {streak} day{streak !== 1 ? 's' : ''} streak
+                      </Text>
+                    </View>
+                    <View style={styles.habitActions}>
+                      {onHabitStatusChange && (
+                        <TouchableOpacity
+                          style={styles.statusButton}
+                          onPress={() => handleStatusChange(habit)}
+                        >
+                          <Text style={styles.statusButtonText}>📊 Status</Text>
+                        </TouchableOpacity>
+                      )}
+                      {onHabitEdit && (
+                        <TouchableOpacity
+                          style={styles.editButton}
+                          onPress={() => onHabitEdit(habit)}
+                        >
+                          <Text style={styles.editButtonText}>✏️ Edit</Text>
+                        </TouchableOpacity>
+                      )}
+                      {onHabitDelete && (
+                        <TouchableOpacity
+                          style={styles.deleteButton}
+                          onPress={() => handleDeleteHabit(habit)}
+                        >
+                          <Text style={styles.deleteButtonText}>🗑️ Delete</Text>
+                        </TouchableOpacity>
+                      )}
+                    </View>
                   </View>
                 </View>
-                
-                {completedLevel && (
-                  <View style={[
-                    styles.completedBadge,
-                    { backgroundColor: getLevelColor(completedLevelIndex) }
-                  ]}>
-                    <Text style={styles.completedBadgeText}>
-                      ✅ {completedLevel.name}
-                    </Text>
-                  </View>
-                )}
               </View>
 
               {habit.description && (
@@ -171,6 +278,7 @@ export const HabitDashboard: React.FC<HabitDashboardProps> = ({
               <View style={styles.levelsContainer}>
                 {habit.levels.map((level, index) => {
                   const isSelected = completedLevel?.id === level.id;
+                  const isActive = (habit.status || 'active') === 'active';
                   
                   return (
                     <TouchableOpacity
@@ -181,8 +289,10 @@ export const HabitDashboard: React.FC<HabitDashboardProps> = ({
                           backgroundColor: getLevelColor(index),
                           borderColor: getLevelColor(index),
                         },
+                        !isActive && styles.disabledLevelButton,
                       ]}
-                      onPress={() => handleLevelSelect(habit, level.id)}
+                      onPress={() => isActive && handleLevelSelect(habit, level.id)}
+                      disabled={!isActive}
                     >
                       <Text style={[
                         styles.levelButtonText,
@@ -281,11 +391,58 @@ const styles = StyleSheet.create({
   habitInfo: {
     flex: 1,
   },
+  habitTitleRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'flex-start',
+    marginBottom: 8,
+    flexWrap: 'wrap',
+    gap: 8,
+  },
   habitName: {
     fontSize: 18,
     fontWeight: 'bold',
     color: '#333',
-    marginBottom: 5,
+    flex: 1,
+    minWidth: 150,
+  },
+  habitActions: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+  },
+  editButton: {
+    backgroundColor: '#f0f0f0',
+    paddingHorizontal: 8,
+    paddingVertical: 4,
+    borderRadius: 6,
+  },
+  editButtonText: {
+    fontSize: 12,
+    color: '#666',
+    fontWeight: '500',
+  },
+  deleteButton: {
+    backgroundColor: '#ffe6e6',
+    paddingHorizontal: 8,
+    paddingVertical: 4,
+    borderRadius: 6,
+  },
+  deleteButtonText: {
+    fontSize: 12,
+    color: '#d32f2f',
+    fontWeight: '500',
+  },
+  statusButton: {
+    backgroundColor: '#e3f2fd',
+    paddingHorizontal: 8,
+    paddingVertical: 4,
+    borderRadius: 6,
+  },
+  statusButtonText: {
+    fontSize: 12,
+    color: '#1976d2',
+    fontWeight: '500',
   },
   streakContainer: {
     alignSelf: 'flex-start',
@@ -357,5 +514,34 @@ const styles = StyleSheet.create({
     fontStyle: 'italic',
     textAlign: 'center',
     marginTop: 10,
+  },
+  statusIndicator: {
+    fontSize: 11,
+    color: '#666',
+    fontWeight: '500',
+    marginTop: 2,
+  },
+  disabledLevelButton: {
+    opacity: 0.5,
+    backgroundColor: '#f5f5f5',
+  },
+  actionsRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginTop: 4,
+  },
+  statusBadge: {
+    backgroundColor: '#fff3cd',
+    paddingHorizontal: 8,
+    paddingVertical: 4,
+    borderRadius: 12,
+    borderWidth: 1,
+    borderColor: '#ffeaa7',
+  },
+  statusBadgeText: {
+    fontSize: 10,
+    color: '#856404',
+    fontWeight: '500',
   },
 });
