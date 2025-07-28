@@ -37,8 +37,18 @@ export class FirebaseAuthService {
       const userCredential = await auth().signInWithCredential(googleCredential);
       
       return this.formatUser(userCredential.user);
-    } catch (error) {
+    } catch (error: any) {
       console.error('Google Sign-In error:', error);
+      
+      // More specific error handling
+      if (error.code === 'auth/api-key-not-valid') {
+        console.error('Firebase API key not configured properly');
+      } else if (error.code === 'auth/invalid-api-key') {
+        console.error('Invalid Firebase API key');
+      } else if (error.code === 'auth/app-not-authorized') {
+        console.error('App not authorized - SHA-1 fingerprint missing');
+      }
+      
       return null;
     }
   }

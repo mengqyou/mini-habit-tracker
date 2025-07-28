@@ -145,6 +145,7 @@ const styles = StyleSheet.create({
     fontWeight: 'bold',
     marginBottom: 20,
     textAlign: 'center',
+    color: '#333',
   },
   section: {
     marginBottom: 15,
@@ -153,11 +154,13 @@ const styles = StyleSheet.create({
     fontSize: 18,
     fontWeight: 'bold',
     marginVertical: 15,
+    color: '#333',
   },
   label: {
     fontSize: 16,
     marginBottom: 5,
     fontWeight: '500',
+    color: '#333',
   },
   input: {
     borderWidth: 1,
@@ -166,6 +169,7 @@ const styles = StyleSheet.create({
     padding: 12,
     backgroundColor: 'white',
     fontSize: 16,
+    color: '#333',
   },
   levelContainer: {
     backgroundColor: 'white',
@@ -179,6 +183,7 @@ const styles = StyleSheet.create({
     fontSize: 16,
     fontWeight: 'bold',
     marginBottom: 10,
+    color: '#333',
   },
   createButton: {
     backgroundColor: '#007AFF',
