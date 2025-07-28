@@ -35,6 +35,10 @@ local.properties
 !debug.keystore
 .kotlin/
 
+# Firebase/Google Services - Contains sensitive API keys
+android/app/google-services.json
+google-services.json
+
 # node.js
 #
 node_modules/
