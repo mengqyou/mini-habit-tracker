@@ -111,6 +111,11 @@ jest.mock('react-native', () => {
       Alert: {
         alert: jest.fn(),
       },
+      AppState: {
+        addEventListener: jest.fn(() => ({ remove: jest.fn() })),
+        removeEventListener: jest.fn(),
+        currentState: 'active',
+      },
       Platform: {
         OS: 'ios',
         select: jest.fn((obj) => obj.ios),
@@ -125,3 +130,15 @@ jest.mock('react-native', () => {
 
 // Setup global test environment
 global.__DEV__ = true;
+
+// Mock global timer functions for React Native environment
+if (!global.setInterval) {
+  global.setInterval = jest.fn((callback, ms) => {
+    return setTimeout(callback, ms);
+  });
+}
+if (!global.clearInterval) {
+  global.clearInterval = jest.fn((id) => {
+    clearTimeout(id);
+  });
+}

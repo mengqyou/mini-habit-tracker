@@ -1,4 +1,4 @@
-import React, { useMemo, useCallback } from 'react';
+import React, { useMemo, useCallback, useState, useEffect } from 'react';
 import {
   View,
   Text,
@@ -6,6 +6,7 @@ import {
   StyleSheet,
   ScrollView,
   Alert,
+  AppState,
 } from 'react-native';
 import { Habit, HabitEntry, HabitStatus } from '../types';
 
@@ -30,16 +31,69 @@ export const HabitDashboard: React.FC<HabitDashboardProps> = ({
   onHabitStatusChange,
   showInactiveHabits = false,
 }) => {
-  const today = new Date().toISOString().split('T')[0];
-  const todayFormatted = new Date().toLocaleDateString('en-US', {
-    weekday: 'long',
-    year: 'numeric',
-    month: 'long',
-    day: 'numeric',
-  });
+  // State to force refresh when date changes
+  const [refreshKey, setRefreshKey] = useState(0);
+
+  // Calculate today's date fresh each time - important for daily refresh
+  const today = useMemo(() => {
+    const todayDate = new Date().toISOString().split('T')[0];
+    console.log('🔵 [HabitDashboard] Today calculated as:', todayDate, 'refreshKey:', refreshKey);
+    return todayDate;
+  }, [refreshKey]); // Depend on refreshKey to recalculate when needed
+
+  const todayFormatted = useMemo(() => {
+    const formatted = new Date().toLocaleDateString('en-US', {
+      weekday: 'long',
+      year: 'numeric',
+      month: 'long',
+      day: 'numeric',
+    });
+    console.log('🔵 [HabitDashboard] Today formatted as:', formatted);
+    return formatted;
+  }, [refreshKey]);
+
+  // Effect to refresh date when app becomes active or component mounts
+  useEffect(() => {
+    const handleAppStateChange = (nextAppState: string) => {
+      if (nextAppState === 'active') {
+        console.log('🔵 [HabitDashboard] App became active, checking if date changed');
+        // Force refresh to ensure we have the correct date
+        setRefreshKey(prev => prev + 1);
+      }
+    };
+
+    // Initial mount refresh
+    console.log('🔵 [HabitDashboard] Component mounted, setting up date refresh');
+    
+    // Set up app state listener
+    const subscription = AppState.addEventListener('change', handleAppStateChange);
+
+    // Set up interval to check for date changes (every minute)
+    const interval = setInterval(() => {
+      const currentDate = new Date().toISOString().split('T')[0];
+      if (currentDate !== today) {
+        console.log('🔵 [HabitDashboard] Date changed from', today, 'to', currentDate, '- refreshing');
+        setRefreshKey(prev => prev + 1);
+      }
+    }, 60000); // Check every minute
+
+    return () => {
+      subscription?.remove();
+      clearInterval(interval);
+    };
+  }, [today]);
 
   const todayEntries = useMemo(() => {
-    return entries.filter(entry => entry.date === today);
+    const filtered = entries.filter(entry => {
+      const match = entry.date === today;
+      if (match) {
+        console.log('🔵 [HabitDashboard] Found today entry:', entry.habitId, 'level:', entry.levelId);
+      }
+      return match;
+    });
+    console.log('🔵 [HabitDashboard] Total today entries:', filtered.length, 'out of', entries.length, 'total entries');
+    console.log('🔵 [HabitDashboard] All entry dates:', entries.map(e => e.date));
+    return filtered;
   }, [entries, today]);
 
   const filteredHabits = useMemo(() => {
@@ -98,9 +152,11 @@ export const HabitDashboard: React.FC<HabitDashboardProps> = ({
 
   const getCompletionStatus = (habit: Habit) => {
     const entry = getTodayEntryForHabit(habit.id);
+    console.log('🔵 [HabitDashboard] getCompletionStatus for habit:', habit.name, 'entry:', entry ? `${entry.date} level ${entry.levelId}` : 'null');
     if (!entry) return null;
     
     const level = habit.levels.find(l => l.id === entry.levelId);
+    console.log('🔵 [HabitDashboard] Found level:', level ? level.name : 'null');
     return level;
   };
 
