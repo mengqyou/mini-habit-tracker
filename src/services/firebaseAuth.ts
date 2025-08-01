@@ -1,5 +1,6 @@
 import auth, { FirebaseAuthTypes } from '@react-native-firebase/auth';
 import { GoogleSignin } from '@react-native-google-signin/google-signin';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 
 export interface User {
   id: string;
@@ -69,14 +70,20 @@ export class FirebaseAuthService {
         name: googleUser.name
       });
       
-      // Return user data formatted for our app
-      return {
+      // Store user data for persistence
+      const user = {
         id: googleUser.id,
         name: googleUser.name,
         email: googleUser.email,
         photo: googleUser.photo,
         isGuest: false
       };
+      
+      await this.storeUserData(user);
+      console.log('✅ [GoogleAuth] User data stored for persistence');
+      
+      // Return user data formatted for our app
+      return user;
     } catch (error: any) {
       console.error('❌ [GoogleAuth] Sign-In failed:', error);
       console.error('❌ [GoogleAuth] Error code:', error.code);
@@ -141,16 +148,40 @@ export class FirebaseAuthService {
       
       // Sign out from Firebase
       await auth().signOut();
+      
+      // Clear stored user data
+      await this.clearStoredUserData();
+      console.log('✅ [Auth] User data cleared from storage');
     } catch (error) {
       console.error('Sign out error:', error);
     }
   }
 
-  static getCurrentUser(): User | null {
+  static async getCurrentUser(): Promise<User | null> {
+    console.log('🔵 [Auth] getCurrentUser called');
+    
+    // First check Firebase auth state
     const firebaseUser = auth().currentUser;
+    console.log('🔍 [Auth] Firebase currentUser:', firebaseUser ? 'exists' : 'null');
     if (firebaseUser) {
+      console.log('🔵 [Auth] Using Firebase user data');
       return this.formatUser(firebaseUser);
     }
+    
+    // If no Firebase user, check stored Google Sign-In data
+    console.log('🔵 [Auth] Checking AsyncStorage for stored user data...');
+    try {
+      const storedUser = await this.getStoredUserData();
+      console.log('🔍 [Auth] AsyncStorage result:', storedUser ? 'found user data' : 'no data');
+      if (storedUser) {
+        console.log('🔵 [Auth] Found stored user data:', { id: storedUser.id, name: storedUser.name, isGuest: storedUser.isGuest });
+        return storedUser;
+      }
+    } catch (error) {
+      console.error('❌ [Auth] Error getting stored user data:', error);
+    }
+    
+    console.log('🔍 [Auth] No user found - returning null');
     return null;
   }
 
@@ -201,6 +232,48 @@ export class FirebaseAuthService {
     } catch (error) {
       console.error('Profile update error:', error);
       throw error;
+    }
+  }
+
+  // Store user data for persistence across app restarts
+  private static async storeUserData(user: User): Promise<void> {
+    try {
+      console.log('🔵 [Auth] Storing user data to AsyncStorage:', { id: user.id, name: user.name, isGuest: user.isGuest });
+      await AsyncStorage.setItem('user_data', JSON.stringify(user));
+      console.log('✅ [Auth] User data stored successfully');
+      
+      // Verify the data was stored correctly
+      const verification = await AsyncStorage.getItem('user_data');
+      console.log('🔍 [Auth] Verification read:', verification ? 'data exists' : 'no data');
+    } catch (error) {
+      console.error('❌ [Auth] Error storing user data:', error);
+    }
+  }
+
+  // Get stored user data
+  private static async getStoredUserData(): Promise<User | null> {
+    try {
+      console.log('🔵 [Auth] Reading from AsyncStorage key: user_data');
+      const userData = await AsyncStorage.getItem('user_data');
+      console.log('🔍 [Auth] AsyncStorage raw data:', userData ? 'data exists' : 'null');
+      if (userData) {
+        const parsedUser = JSON.parse(userData) as User;
+        console.log('🔵 [Auth] Parsed user data:', { id: parsedUser.id, name: parsedUser.name, isGuest: parsedUser.isGuest });
+        return parsedUser;
+      }
+    } catch (error) {
+      console.error('❌ [Auth] Error getting stored user data:', error);
+    }
+    console.log('🔍 [Auth] No stored user data found');
+    return null;
+  }
+
+  // Clear stored user data
+  private static async clearStoredUserData(): Promise<void> {
+    try {
+      await AsyncStorage.removeItem('user_data');
+    } catch (error) {
+      console.error('Error clearing stored user data:', error);
     }
   }
 }

@@ -54,13 +54,36 @@ function App() {
       // won't work properly. We'll handle user state manually.
       console.log('🔵 [InitApp] Firebase initialized, checking for existing user...');
       
-      // Check if we have any local data to load
-      const currentUser = FirebaseAuthService.getCurrentUser();
-      console.log('🔍 [InitApp] Current Firebase user:', currentUser);
+      // Check if we have any stored user data
+      const currentUser = await FirebaseAuthService.getCurrentUser();
+      console.log('🔍 [InitApp] Current user:', currentUser);
       
       if (currentUser) {
         setUser(currentUser);
-        await loadLocalData();
+        if (currentUser.isGuest) {
+          await loadLocalData();
+        } else {
+          // For authenticated users, set up Firebase listeners
+          setUseFirebase(true);
+          const unsubscribers = await loadFirebaseData(currentUser.id);
+          if (unsubscribers) {
+            setFirebaseUnsubscribers(unsubscribers);
+          }
+        }
+      } else {
+        // No authenticated user found, check if there are local habits
+        console.log('🔵 [InitApp] No authenticated user, checking for local habits...');
+        const localHabits = await StorageService.getHabits();
+        console.log('🔍 [InitApp] Found local habits:', localHabits.length);
+        
+        if (localHabits.length > 0) {
+          // Auto-login as guest if local habits exist
+          console.log('🔵 [InitApp] Auto-logging in as guest with existing habits');
+          const guestUser = FirebaseAuthService.createGuestUser();
+          setUser(guestUser);
+          await loadLocalData();
+        }
+        // If no local habits, user will see login screen
       }
       
       console.log('✅ [InitApp] App initialization completed');
@@ -236,9 +259,13 @@ function App() {
       setHabits([]);
       setEntries([]);
       setSelectedHabit(null);
+      setEditingHabit(null);
+      setOptimisticEntries([]);
+      optimisticEntriesRef.current = [];
       setUseFirebase(false);
       setFirebaseUnsubscribers({});
       setCurrentView('dashboard');
+      console.log('✅ [Logout] User logged out and app state cleared');
     } catch (error) {
       console.error('Error logging out:', error);
     }
@@ -545,9 +572,9 @@ function App() {
         <View style={[styles.header, { paddingTop: insets.top + 10 }]}>
           <View style={styles.headerTop}>
             <Text style={styles.appTitle}>Mini Habit Tracker</Text>
-            <TouchableOpacity style={styles.userButton} onPress={handleLogout}>
+            <TouchableOpacity style={styles.userButton} onPress={user.isGuest ? () => setUser(null) : handleLogout}>
               <Text style={styles.userButtonText}>
-                {user.name} • Logout
+                {user.isGuest ? 'Sign In' : `${user.name} • Logout`}
               </Text>
             </TouchableOpacity>
           </View>
