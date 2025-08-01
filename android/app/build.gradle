@@ -83,7 +83,7 @@ android {
         applicationId "com.minihabittracker"
         minSdkVersion rootProject.ext.minSdkVersion
         targetSdkVersion rootProject.ext.targetSdkVersion
-        versionCode 30
+        versionCode 31
         versionName "1.0"
     }
     signingConfigs {
