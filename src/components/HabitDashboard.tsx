@@ -1,4 +1,4 @@
-import React, { useMemo } from 'react';
+import React, { useMemo, useCallback } from 'react';
 import {
   View,
   Text,
@@ -50,32 +50,43 @@ export const HabitDashboard: React.FC<HabitDashboardProps> = ({
     }
   }, [habits, showInactiveHabits]);
 
-  const getTodayEntryForHabit = (habitId: string) => {
+  const getTodayEntryForHabit = useCallback((habitId: string) => {
     return todayEntries.find(entry => entry.habitId === habitId);
-  };
+  }, [todayEntries]);
 
-  const handleLevelSelect = (habit: Habit, levelId: string) => {
+  const handleLevelSelect = useCallback(async (habit: Habit, levelId: string) => {
+    console.log('🔵 [HabitDashboard] handleLevelSelect called for habit:', habit.name, 'levelId:', levelId);
+    
     const level = habit.levels.find(l => l.id === levelId);
     if (!level) return;
 
     const existingEntry = getTodayEntryForHabit(habit.id);
+    console.log('🔵 [HabitDashboard] existingEntry:', existingEntry ? 'exists' : 'null');
 
+    let updatedEntry: HabitEntry;
+    
     if (existingEntry) {
-      const updatedEntry: HabitEntry = {
+      updatedEntry = {
         ...existingEntry,
         levelId,
         timestamp: new Date(),
       };
+      console.log('🔵 [HabitDashboard] Updating existing entry');
       onEntryUpdate(updatedEntry);
     } else {
-      const newEntry: HabitEntry = {
+      updatedEntry = {
         id: Date.now().toString(),
         habitId: habit.id,
         date: today,
         levelId,
         timestamp: new Date(),
       };
-      onEntryAdd(newEntry);
+      console.log('🔵 [HabitDashboard] Adding new entry, will wait 200ms');
+      onEntryAdd(updatedEntry);
+      
+      // Add a small delay specifically for new entries to ensure optimistic update takes hold
+      // before Firebase listener processes the data
+      await new Promise(resolve => setTimeout(resolve, 200));
     }
 
     Alert.alert(
@@ -83,7 +94,7 @@ export const HabitDashboard: React.FC<HabitDashboardProps> = ({
       `${habit.name}: ${level.name} - ${level.description}`,
       [{ text: 'OK' }]
     );
-  };
+  }, [today, onEntryAdd, onEntryUpdate, getTodayEntryForHabit]);
 
   const getCompletionStatus = (habit: Habit) => {
     const entry = getTodayEntryForHabit(habit.id);

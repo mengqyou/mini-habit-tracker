@@ -168,16 +168,28 @@ export class FirebaseStorageService {
         timestamp: new Date(),
       };
 
-      if (entry.id && entry.id !== Date.now().toString()) {
-        // Update existing entry
-        await this.entriesCollection.doc(entry.id).update({
-          ...entryData,
-          updatedAt: new Date(),
-        });
-      } else {
-        // Create new entry
-        await this.entriesCollection.add(entryData);
-      }
+      // Use a transaction to ensure atomicity
+      await firestore().runTransaction(async (transaction) => {
+        // Check if an entry already exists for this habit+date combination
+        const existingQuery = await this.entriesCollection
+          .where('userId', '==', userId)
+          .where('habitId', '==', entry.habitId)
+          .where('date', '==', entry.date)
+          .get();
+
+        if (!existingQuery.empty) {
+          // Update existing entry
+          const existingDoc = existingQuery.docs[0];
+          transaction.update(existingDoc.ref, {
+            ...entryData,
+            updatedAt: new Date(),
+          });
+        } else {
+          // Create new entry
+          const newDocRef = this.entriesCollection.doc();
+          transaction.set(newDocRef, entryData);
+        }
+      });
     } catch (error) {
       console.error('Error saving entry:', error);
       throw error;

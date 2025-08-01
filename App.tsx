@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import {
   SafeAreaView,
   StatusBar,
@@ -25,17 +25,21 @@ function App() {
   const insets = useSafeAreaInsets();
   const [habits, setHabits] = useState<Habit[]>([]);
   const [entries, setEntries] = useState<HabitEntry[]>([]);
-  const [currentView, setCurrentView] = useState<'dashboard' | 'setup' | 'tracker' | 'summary'>('dashboard');
+  const [currentView, setCurrentView] = useState<'dashboard' | 'setup' | 'tracker' | 'summary'>('setup');
   const [selectedHabit, setSelectedHabit] = useState<Habit | null>(null);
   const [editingHabit, setEditingHabit] = useState<Habit | null>(null);
   const [showInactiveHabits, setShowInactiveHabits] = useState(false);
   const [user, setUser] = useState<User | null>(null);
   const [isLoading, setIsLoading] = useState(true);
+  const [habitsLoading, setHabitsLoading] = useState(false);
   const [useFirebase, setUseFirebase] = useState(false);
   const [firebaseUnsubscribers, setFirebaseUnsubscribers] = useState<{
     unsubscribeHabits?: () => void;
     unsubscribeEntries?: () => void;
   }>({});
+  // Track optimistic updates to prevent Firebase listeners from overwriting them
+  const [optimisticEntries, setOptimisticEntries] = useState<HabitEntry[]>([]);
+  const optimisticEntriesRef = useRef<HabitEntry[]>([]);
 
   useEffect(() => {
     initializeApp();
@@ -85,15 +89,70 @@ function App() {
   const loadFirebaseData = async (userId: string) => {
     try {
       // Set up real-time listeners for habits and entries
+      setHabitsLoading(true);
       const unsubscribeHabits = FirebaseStorageService.subscribeToHabits(userId, (loadedHabits) => {
+        console.log('🔵 [Firebase] Habits listener fired, count:', loadedHabits.length);
         setHabits(loadedHabits);
+        // Clear loading state immediately after setting habits
+        setHabitsLoading(false);
+        console.log('🔵 [Firebase] Set habitsLoading to false');
         if (loadedHabits.length > 0 && !selectedHabit) {
           setSelectedHabit(loadedHabits[0]);
+        }
+        
+        // If habits are loaded and we're on setup screen but not editing, go to dashboard
+        if (loadedHabits.length > 0) {
+          setCurrentView(currentView => {
+            console.log('🔵 [Firebase] Current view is:', currentView, 'editingHabit:', editingHabit);
+            if (currentView === 'setup' && !editingHabit) {
+              console.log('🔵 [Firebase] Switching from setup to dashboard because habits were loaded');
+              return 'dashboard';
+            }
+            return currentView;
+          });
         }
       });
 
       const unsubscribeEntries = FirebaseStorageService.subscribeToEntries(userId, (loadedEntries) => {
-        setEntries(loadedEntries);
+        // Add a longer delay for first-time listener calls to allow Firebase transactions to complete
+        setTimeout(() => {
+          // Merge loaded entries with optimistic entries, prioritizing Firebase data when available
+          const currentOptimistic = optimisticEntriesRef.current;
+          const mergedEntries = [...loadedEntries];
+          
+          // Add optimistic entries that aren't in Firebase yet
+          currentOptimistic.forEach(optimisticEntry => {
+            const existsInFirebase = loadedEntries.some(e => 
+              e.habitId === optimisticEntry.habitId && 
+              e.date === optimisticEntry.date
+            );
+            
+            if (!existsInFirebase) {
+              mergedEntries.push(optimisticEntry);
+            }
+          });
+          
+          setEntries(mergedEntries);
+          
+          // Clean up optimistic entries that are now in Firebase
+          // But be VERY conservative - keep recent entries longer
+          const remainingOptimistic = currentOptimistic.filter(optimisticEntry => {
+            const existsInFirebase = loadedEntries.some(e => 
+              e.habitId === optimisticEntry.habitId && 
+              e.date === optimisticEntry.date
+            );
+            
+            // Always keep very recent entries (< 15 seconds) regardless of Firebase state
+            // This prevents premature cleanup during Firebase sync delays
+            const isVeryRecent = new Date().getTime() - optimisticEntry.timestamp.getTime() < 15000; // 15 seconds
+            
+            // Keep if: doesn't exist in Firebase OR is very recent
+            return !existsInFirebase || isVeryRecent;
+          });
+          
+          optimisticEntriesRef.current = remainingOptimistic;
+          setOptimisticEntries(remainingOptimistic);
+        }, 1000); // Longer delay for first-click reliability
       });
 
       // Store cleanup functions
@@ -304,45 +363,105 @@ function App() {
 
   const handleEntryAdd = async (entry: HabitEntry) => {
     try {
-      // Optimistically update UI immediately
-      setEntries([...entries, entry]);
-      
       if (useFirebase && user && !user.isGuest) {
+        // Add to optimistic entries for immediate UI feedback
+        const newOptimistic = [...optimisticEntriesRef.current, entry];
+        optimisticEntriesRef.current = newOptimistic;
+        setOptimisticEntries(newOptimistic);
+        
+        // Update entries immediately
+        setEntries(prev => [...prev, entry]);
+        
+        // Add a small delay before Firebase save to ensure optimistic entry is fully registered
+        // This helps prevent the race condition where Firebase listener clears the entry
+        // before it has a chance to properly display
+        await new Promise(resolve => setTimeout(resolve, 150));
+        
+        // Save to Firebase (listener will handle final sync)
         await FirebaseStorageService.saveEntry(user.id, entry);
-        // Firebase real-time listener will sync the actual data
       } else {
+        // Local storage - immediate update
+        setEntries([...entries, entry]);
         await StorageService.saveEntry(entry);
       }
     } catch (error) {
       console.error('Error adding entry:', error);
-      // Revert optimistic update on error
-      setEntries(entries.filter(e => e.id !== entry.id));
+      
+      if (useFirebase && user && !user.isGuest) {
+        // Revert optimistic update on error
+        const revertedOptimistic = optimisticEntriesRef.current.filter(e => e.id !== entry.id);
+        optimisticEntriesRef.current = revertedOptimistic;
+        setOptimisticEntries(revertedOptimistic);
+      }
+      
+      setEntries(prev => prev.filter(e => e.id !== entry.id));
     }
   };
 
   const handleEntryUpdate = async (entry: HabitEntry) => {
     try {
-      // Store original entry for rollback
-      const originalEntries = [...entries];
-      // Optimistically update UI immediately
-      setEntries(entries.map(e => e.id === entry.id ? entry : e));
-      
       if (useFirebase && user && !user.isGuest) {
+        // Update optimistic entries
+        const updatedOptimistic = optimisticEntriesRef.current.map(e => e.id === entry.id ? entry : e);
+        const entryExists = optimisticEntriesRef.current.some(e => e.id === entry.id);
+        
+        if (!entryExists) {
+          // Add to optimistic if not already there
+          updatedOptimistic.push(entry);
+        }
+        
+        optimisticEntriesRef.current = updatedOptimistic;
+        setOptimisticEntries(updatedOptimistic);
+        
+        // Update entries immediately
+        setEntries(prev => prev.map(e => e.id === entry.id ? entry : e));
+        
+        // Save to Firebase (listener will handle final sync)
         await FirebaseStorageService.saveEntry(user.id, entry);
-        // Firebase real-time listener will sync the actual data
       } else {
+        // Local storage - immediate update
+        setEntries(entries.map(e => e.id === entry.id ? entry : e));
         await StorageService.saveEntry(entry);
       }
     } catch (error) {
       console.error('Error updating entry:', error);
-      // Revert optimistic update on error
-      setEntries(originalEntries);
+      
+      if (useFirebase && user && !user.isGuest) {
+        // Revert optimistic update on error
+        const revertedOptimistic = optimisticEntriesRef.current.filter(e => e.id !== entry.id);
+        optimisticEntriesRef.current = revertedOptimistic;
+        setOptimisticEntries(revertedOptimistic);
+      }
+      
+      // Revert the main entries state (this is complex, for now just trigger a reload)
+      if (useFirebase && user && !user.isGuest) {
+        // Firebase listener will reload the correct data
+      } else {
+        // For local storage, we'd need to reload from storage
+        setEntries(prev => prev.filter(e => e.id !== entry.id));
+      }
     }
   };
 
   const renderContent = () => {
+    console.log('🔵 [renderContent] habitsLoading:', habitsLoading, 'habits.length:', habits.length, 'editingHabit:', editingHabit, 'currentView:', currentView);
+    
+    if (habitsLoading) {
+      console.log('🔵 [renderContent] Showing loading screen');
+      return (
+        <View style={styles.loadingContainer}>
+          <Text style={styles.loadingText}>Loading your habits...</Text>
+        </View>
+      );
+    }
+
     if (habits.length === 0 && !editingHabit) {
-      return <HabitSetup onHabitCreate={handleHabitCreate} />;
+      console.log('🔵 [renderContent] Showing HabitSetup because habits.length === 0');
+      return <HabitSetup onHabitCreate={handleHabitCreate} existingHabits={habits} />;
+    }
+
+    if (habits.length > 0 && currentView === 'dashboard') {
+      console.log('🔵 [renderContent] Should show HabitDashboard - habits:', habits.length, 'currentView:', currentView);
     }
 
     if (currentView === 'setup') {
@@ -351,6 +470,7 @@ function App() {
           onHabitCreate={handleHabitCreate} 
           onHabitUpdate={handleHabitUpdate}
           editingHabit={editingHabit}
+          existingHabits={habits}
         />
       );
     }

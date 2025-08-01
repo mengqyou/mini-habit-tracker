@@ -16,12 +16,14 @@ interface HabitSetupProps {
   onHabitCreate: (habit: Habit) => void;
   onHabitUpdate?: (habit: Habit) => void;
   editingHabit?: Habit | null;
+  existingHabits?: Habit[];
 }
 
 export const HabitSetup: React.FC<HabitSetupProps> = ({ 
   onHabitCreate, 
   onHabitUpdate, 
-  editingHabit 
+  editingHabit,
+  existingHabits = []
 }) => {
   const [habitName, setHabitName] = useState(editingHabit?.name || '');
   const [habitDescription, setHabitDescription] = useState(editingHabit?.description || '');
@@ -44,8 +46,29 @@ export const HabitSetup: React.FC<HabitSetupProps> = ({
   };
 
   const saveHabit = () => {
+    console.log('🔵 [HabitSetup] saveHabit called, habitName:', habitName.trim());
+    console.log('🔵 [HabitSetup] existingHabits:', existingHabits.map(h => h.name));
+    
     if (!habitName.trim()) {
       Alert.alert('Error', 'Please enter a habit name');
+      return;
+    }
+
+    // Check for duplicate habit names (only when creating new habits or changing name)
+    const trimmedName = habitName.trim();
+    const isDuplicateName = existingHabits.some(habit => 
+      habit.name.toLowerCase() === trimmedName.toLowerCase() && 
+      habit.id !== editingHabit?.id
+    );
+    
+    console.log('🔵 [HabitSetup] isDuplicateName:', isDuplicateName, 'for name:', trimmedName);
+    
+    if (isDuplicateName) {
+      console.log('🔵 [HabitSetup] Showing duplicate name alert');
+      Alert.alert(
+        'Duplicate Habit Name', 
+        `A habit named "${trimmedName}" already exists. Please choose a different name.`
+      );
       return;
     }
 
