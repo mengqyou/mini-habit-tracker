@@ -40,7 +40,7 @@ You have the right to:
 ### Data Deletion Request
 
 To request deletion of your account and all associated data:
-1. **In-App Deletion**: Go to Settings > Account > Delete Account in the app
+1. **In-App Deletion**: Go to Settings (bottom navigation) > Data Management > Delete Account in the app
 2. **Email Request**: Send an email to thinkfluxai@gmail.com with subject "Data Deletion Request" and include your email address used for the account
 3. **Online Form**: Visit https://mengqyou.github.io/mini-habit-tracker/delete-account.html
 

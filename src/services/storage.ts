@@ -99,4 +99,15 @@ export class StorageService {
       return [];
     }
   }
+
+  static async clearAllData(): Promise<void> {
+    try {
+      console.log('🔴 [Storage] Clearing all local data...');
+      await AsyncStorage.multiRemove([HABITS_KEY, ENTRIES_KEY]);
+      console.log('✅ [Storage] All local data cleared successfully');
+    } catch (error) {
+      console.error('❌ [Storage] Error clearing all data:', error);
+      throw error;
+    }
+  }
 }

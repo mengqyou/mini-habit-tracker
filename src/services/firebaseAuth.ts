@@ -276,4 +276,30 @@ export class FirebaseAuthService {
       console.error('Error clearing stored user data:', error);
     }
   }
+
+  // Delete user account completely
+  static async deleteAccount(): Promise<void> {
+    try {
+      const user = auth().currentUser;
+      if (user) {
+        // Delete the Firebase user account
+        await user.delete();
+        console.log('✅ [Auth] Firebase user account deleted');
+      }
+      
+      // Sign out from Google
+      const isSignedIn = await GoogleSignin.isSignedIn();
+      if (isSignedIn) {
+        await GoogleSignin.signOut();
+        console.log('✅ [Auth] Google Sign-In signed out');
+      }
+      
+      // Clear stored user data
+      await this.clearStoredUserData();
+      console.log('✅ [Auth] Stored user data cleared');
+    } catch (error) {
+      console.error('❌ [Auth] Error deleting account:', error);
+      throw error;
+    }
+  }
 }

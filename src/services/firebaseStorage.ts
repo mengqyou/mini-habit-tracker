@@ -317,4 +317,49 @@ export class FirebaseStorageService {
       throw error;
     }
   }
+
+  // ===== ACCOUNT DELETION =====
+  static async deleteAllUserData(userId: string): Promise<void> {
+    try {
+      console.log('🔴 [Firebase] Starting deletion of all user data for:', userId);
+      
+      // Delete all user habits
+      const habitsSnapshot = await this.habitsCollection
+        .where('userId', '==', userId)
+        .get();
+      
+      console.log(`🔴 [Firebase] Found ${habitsSnapshot.size} habits to delete`);
+      
+      // Delete all user entries
+      const entriesSnapshot = await this.entriesCollection
+        .where('userId', '==', userId)
+        .get();
+      
+      console.log(`🔴 [Firebase] Found ${entriesSnapshot.size} entries to delete`);
+      
+      // Use batch operations for efficient deletion
+      const batch = firestore().batch();
+      
+      // Add all habits to batch deletion
+      habitsSnapshot.docs.forEach(doc => {
+        batch.delete(doc.ref);
+      });
+      
+      // Add all entries to batch deletion
+      entriesSnapshot.docs.forEach(doc => {
+        batch.delete(doc.ref);
+      });
+      
+      // Delete user document
+      batch.delete(this.usersCollection.doc(userId));
+      
+      // Execute all deletions
+      await batch.commit();
+      
+      console.log('✅ [Firebase] All user data deleted successfully');
+    } catch (error) {
+      console.error('❌ [Firebase] Error deleting user data:', error);
+      throw error;
+    }
+  }
 }

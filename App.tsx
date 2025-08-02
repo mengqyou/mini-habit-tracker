@@ -16,6 +16,7 @@ import { HabitTracker } from './src/components/HabitTracker';
 import { HabitDashboard } from './src/components/HabitDashboard';
 import { SummaryContainer } from './src/components/SummaryContainer';
 import { LoginScreen } from './src/components/LoginScreen';
+import { SettingsScreen } from './src/components/SettingsScreen';
 import { StorageService } from './src/services/storage';
 import { FirebaseAuthService, User } from './src/services/firebaseAuth';
 import { FirebaseStorageService } from './src/services/firebaseStorage';
@@ -25,7 +26,7 @@ function App() {
   const insets = useSafeAreaInsets();
   const [habits, setHabits] = useState<Habit[]>([]);
   const [entries, setEntries] = useState<HabitEntry[]>([]);
-  const [currentView, setCurrentView] = useState<'dashboard' | 'setup' | 'tracker' | 'summary'>('setup');
+  const [currentView, setCurrentView] = useState<'dashboard' | 'setup' | 'tracker' | 'summary' | 'settings'>('setup');
   const [selectedHabit, setSelectedHabit] = useState<Habit | null>(null);
   const [editingHabit, setEditingHabit] = useState<Habit | null>(null);
   const [showInactiveHabits, setShowInactiveHabits] = useState(false);
@@ -537,6 +538,15 @@ function App() {
       );
     }
 
+    if (currentView === 'settings') {
+      return (
+        <SettingsScreen
+          user={user}
+          onLogout={handleLogout}
+        />
+      );
+    }
+
     return (
       <View style={styles.placeholder}>
         <Text>Please select a view</Text>
@@ -610,6 +620,17 @@ function App() {
             >
               <Text style={[styles.navButtonText, currentView === 'setup' && styles.activeNavButtonText]}>
                 + New
+              </Text>
+            </TouchableOpacity>
+            <TouchableOpacity
+              style={[styles.navButton, currentView === 'settings' && styles.activeNavButton]}
+              onPress={() => {
+                setEditingHabit(null);
+                setCurrentView('settings');
+              }}
+            >
+              <Text style={[styles.navButtonText, currentView === 'settings' && styles.activeNavButtonText]}>
+                Settings
               </Text>
             </TouchableOpacity>
             {currentView === 'dashboard' && (
