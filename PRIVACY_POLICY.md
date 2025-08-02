@@ -37,6 +37,15 @@ You have the right to:
 - **Delete**: Request deletion of your account and all associated data
 - **Export**: Download your habit data in a portable format
 
+### Data Deletion Request
+
+To request deletion of your account and all associated data:
+1. **In-App Deletion**: Go to Settings > Account > Delete Account in the app
+2. **Email Request**: Send an email to thinkfluxai@gmail.com with subject "Data Deletion Request" and include your email address used for the account
+3. **Online Form**: Visit https://mengqyou.github.io/mini-habit-tracker/delete-account.html
+
+We will process your deletion request within 30 days and confirm completion via email.
+
 ## Children's Privacy
 
 Our app is not intended for children under 13. We do not knowingly collect personal information from children under 13.
