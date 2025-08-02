@@ -59,9 +59,9 @@ habit tracker, habits, productivity, self improvement, daily habits, streak trac
 *Note: You'll need to create and host a privacy policy. Required for Google Play Store.*
 
 ## Support/Contact Information
-- Developer: Your Name
-- Support Email: your-email@domain.com
-- Website: (optional)
+- Developer: ThinkFlux AI
+- Support Email: thinkfluxai@gmail.com
+- Website: https://mengqyou.github.io/mini-habit-tracker/
 
 ## Release Information
 - **Release Type**: Production

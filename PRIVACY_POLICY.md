@@ -48,7 +48,7 @@ We may update this Privacy Policy from time to time. We will notify you of any c
 ## Contact Us
 
 If you have any questions about this Privacy Policy, please contact us at:
-- **Email**: [Your Email Address]
+- **Email**: thinkfluxai@gmail.com
 - **GitHub**: https://github.com/mengqyou/mini-habit-tracker
 
 ---
