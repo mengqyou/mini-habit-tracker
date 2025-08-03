@@ -77,3 +77,14 @@ yarn-error.log
 !.yarn/releases
 !.yarn/sdks
 !.yarn/versions
+
+# Build artifacts - APKs and AABs should not be committed
+*.apk
+*.aab
+android/app/build/
+android/build/
+android/temp_aab/
+temp_apk_analysis/
+
+# Large bundletool
+bundletool.jar

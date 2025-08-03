@@ -90,6 +90,11 @@ android {
         targetSdkVersion rootProject.ext.targetSdkVersion
         versionCode 38
         versionName "1.0"
+        
+        // Only include ARM architectures for production builds to reduce APK size
+        ndk {
+            abiFilters "armeabi-v7a", "arm64-v8a"
+        }
     }
     signingConfigs {
         debug {
@@ -113,6 +118,10 @@ android {
             signingConfig signingConfigs.release
             minifyEnabled enableProguardInReleaseBuilds
             proguardFiles getDefaultProguardFile("proguard-android.txt"), "proguard-rules.pro"
+            
+            // Additional optimizations for smaller release builds
+            shrinkResources true
+            debuggable false
         }
     }
 }
