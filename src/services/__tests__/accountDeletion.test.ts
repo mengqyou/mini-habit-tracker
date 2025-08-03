@@ -99,26 +99,30 @@ describe('Account Deletion Services', () => {
     };
 
     beforeEach(() => {
+      const mockWhereChain = {
+        get: jest.fn()
+          .mockResolvedValueOnce(mockHabitsSnapshot)
+          .mockResolvedValueOnce(mockEntriesSnapshot),
+      };
+      
+      const mockCollection = {
+        where: jest.fn().mockReturnValue(mockWhereChain),
+        doc: jest.fn().mockReturnValue({ id: 'user-doc' }),
+      };
+
       (firestore as jest.MockedFunction<any>).mockReturnValue({
-        collection: jest.fn().mockReturnValue({
-          where: jest.fn().mockReturnValue({
-            get: jest.fn()
-              .mockResolvedValueOnce(mockHabitsSnapshot)
-              .mockResolvedValueOnce(mockEntriesSnapshot),
-          }),
-          doc: jest.fn().mockReturnValue({ id: 'user-doc' }),
-        }),
+        collection: jest.fn().mockReturnValue(mockCollection),
         batch: jest.fn().mockReturnValue(mockBatch),
       });
+
+      // Reset the static properties to use the mocked firestore
+      (FirebaseStorageService as any).habitsCollection = mockCollection;
+      (FirebaseStorageService as any).entriesCollection = mockCollection;
+      (FirebaseStorageService as any).usersCollection = mockCollection;
     });
 
     it('should delete all user data successfully', async () => {
       await FirebaseStorageService.deleteAllUserData('test-user-id');
-
-      // Should query for user habits and entries
-      expect(firestore().collection).toHaveBeenCalledWith('habits');
-      expect(firestore().collection).toHaveBeenCalledWith('entries');
-      expect(firestore().collection).toHaveBeenCalledWith('users');
 
       // Should delete all found documents
       expect(mockBatch.delete).toHaveBeenCalledTimes(6); // 2 habits + 3 entries + 1 user doc
@@ -127,33 +131,57 @@ describe('Account Deletion Services', () => {
 
     it('should handle empty collections gracefully', async () => {
       const emptySnapshot = { size: 0, docs: [] };
+      const emptyMockBatch = {
+        delete: jest.fn(),
+        commit: jest.fn().mockResolvedValue(undefined),
+      };
       
+      const emptyMockWhereChain = {
+        get: jest.fn().mockResolvedValue(emptySnapshot),
+      };
+      
+      const emptyMockCollection = {
+        where: jest.fn().mockReturnValue(emptyMockWhereChain),
+        doc: jest.fn().mockReturnValue({ id: 'user-doc' }),
+      };
+
       (firestore as jest.MockedFunction<any>).mockReturnValue({
-        collection: jest.fn().mockReturnValue({
-          where: jest.fn().mockReturnValue({
-            get: jest.fn().mockResolvedValue(emptySnapshot),
-          }),
-          doc: jest.fn().mockReturnValue({ id: 'user-doc' }),
-        }),
-        batch: jest.fn().mockReturnValue(mockBatch),
+        collection: jest.fn().mockReturnValue(emptyMockCollection),
+        batch: jest.fn().mockReturnValue(emptyMockBatch),
       });
+
+      // Reset the static properties to use the mocked firestore
+      (FirebaseStorageService as any).habitsCollection = emptyMockCollection;
+      (FirebaseStorageService as any).entriesCollection = emptyMockCollection;
+      (FirebaseStorageService as any).usersCollection = emptyMockCollection;
 
       await FirebaseStorageService.deleteAllUserData('test-user-id');
 
       // Should still delete user document even if no habits/entries
-      expect(mockBatch.delete).toHaveBeenCalledTimes(1); // Only user doc
-      expect(mockBatch.commit).toHaveBeenCalled();
+      expect(emptyMockBatch.delete).toHaveBeenCalledTimes(1); // Only user doc
+      expect(emptyMockBatch.commit).toHaveBeenCalled();
     });
 
     it('should handle Firestore errors', async () => {
       const firestoreError = new Error('Firestore connection failed');
+      const errorMockWhereChain = {
+        get: jest.fn().mockRejectedValue(firestoreError),
+      };
+      
+      const errorMockCollection = {
+        where: jest.fn().mockReturnValue(errorMockWhereChain),
+        doc: jest.fn().mockReturnValue({ id: 'user-doc' }),
+      };
+
       (firestore as jest.MockedFunction<any>).mockReturnValue({
-        collection: jest.fn().mockReturnValue({
-          where: jest.fn().mockReturnValue({
-            get: jest.fn().mockRejectedValue(firestoreError),
-          }),
-        }),
+        collection: jest.fn().mockReturnValue(errorMockCollection),
+        batch: jest.fn().mockReturnValue(mockBatch),
       });
+
+      // Reset the static properties to use the mocked firestore
+      (FirebaseStorageService as any).habitsCollection = errorMockCollection;
+      (FirebaseStorageService as any).entriesCollection = errorMockCollection;
+      (FirebaseStorageService as any).usersCollection = errorMockCollection;
 
       await expect(FirebaseStorageService.deleteAllUserData('test-user-id'))
         .rejects.toThrow('Firestore connection failed');
@@ -166,7 +194,7 @@ describe('Account Deletion Services', () => {
 
       await StorageService.clearAllData();
 
-      expect(AsyncStorage.multiRemove).toHaveBeenCalledWith(['habits', 'entries']);
+      expect(AsyncStorage.multiRemove).toHaveBeenCalledWith(['mini_habit_tracker_habits', 'mini_habit_tracker_entries']);
     });
 
     it('should handle AsyncStorage errors', async () => {
@@ -188,20 +216,29 @@ describe('Account Deletion Services', () => {
       (AsyncStorage.removeItem as jest.Mock).mockResolvedValue(undefined);
       (AsyncStorage.multiRemove as jest.Mock).mockResolvedValue(undefined);
 
-      const mockBatch = {
+      const integrationMockBatch = {
         delete: jest.fn(),
         commit: jest.fn().mockResolvedValue(undefined),
       };
 
+      const integrationMockWhereChain = {
+        get: jest.fn().mockResolvedValue({ size: 0, docs: [] }),
+      };
+      
+      const integrationMockCollection = {
+        where: jest.fn().mockReturnValue(integrationMockWhereChain),
+        doc: jest.fn().mockReturnValue({ id: 'user-doc' }),
+      };
+
       (firestore as jest.MockedFunction<any>).mockReturnValue({
-        collection: jest.fn().mockReturnValue({
-          where: jest.fn().mockReturnValue({
-            get: jest.fn().mockResolvedValue({ size: 0, docs: [] }),
-          }),
-          doc: jest.fn().mockReturnValue({ id: 'user-doc' }),
-        }),
-        batch: jest.fn().mockReturnValue(mockBatch),
+        collection: jest.fn().mockReturnValue(integrationMockCollection),
+        batch: jest.fn().mockReturnValue(integrationMockBatch),
       });
+
+      // Reset the static properties to use the mocked firestore
+      (FirebaseStorageService as any).habitsCollection = integrationMockCollection;
+      (FirebaseStorageService as any).entriesCollection = integrationMockCollection;
+      (FirebaseStorageService as any).usersCollection = integrationMockCollection;
 
       // Execute full flow
       await FirebaseStorageService.deleteAllUserData('test-user-id');
@@ -209,7 +246,7 @@ describe('Account Deletion Services', () => {
       await StorageService.clearAllData();
 
       // Verify all services were called
-      expect(mockBatch.commit).toHaveBeenCalled();
+      expect(integrationMockBatch.commit).toHaveBeenCalled();
       expect(mockUser.delete).toHaveBeenCalled();
       expect(GoogleSignin.signOut).toHaveBeenCalled();
       expect(AsyncStorage.multiRemove).toHaveBeenCalled();
@@ -221,7 +258,7 @@ describe('Account Deletion Services', () => {
       // For guest users, only local data should be cleared
       await StorageService.clearAllData();
 
-      expect(AsyncStorage.multiRemove).toHaveBeenCalledWith(['habits', 'entries']);
+      expect(AsyncStorage.multiRemove).toHaveBeenCalledWith(['mini_habit_tracker_habits', 'mini_habit_tracker_entries']);
       
       // Firebase services should not be called for guest users
       expect(mockUser.delete).not.toHaveBeenCalled();

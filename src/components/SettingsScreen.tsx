@@ -97,7 +97,11 @@ export const SettingsScreen: React.FC<SettingsScreenProps> = ({ user, onLogout }
       console.log('Export data:', JSON.stringify(exportData, null, 2));
     } catch (error) {
       console.error('Error exporting data:', error);
-      Alert.alert('Export Error', 'Failed to export data. Please try again.');
+      Alert.alert(
+        'Export Error',
+        'Failed to export data. Please try again.',
+        [{ text: 'OK' }]
+      );
     }
   };
 

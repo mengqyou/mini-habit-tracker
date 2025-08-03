@@ -10,9 +10,6 @@ import { StorageService } from '../../services/storage';
 jest.mock('../../services/firebaseAuth');
 jest.mock('../../services/firebaseStorage');
 jest.mock('../../services/storage');
-jest.mock('react-native/Libraries/Linking/Linking', () => ({
-  openURL: jest.fn(() => Promise.resolve()),
-}));
 
 // Mock Alert
 jest.spyOn(Alert, 'alert');

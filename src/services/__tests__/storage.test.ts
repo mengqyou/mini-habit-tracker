@@ -18,6 +18,11 @@ const mockAsyncStorage = AsyncStorage as jest.Mocked<typeof AsyncStorage>;
 describe('StorageService', () => {
   beforeEach(() => {
     jest.clearAllMocks();
+    // Reset AsyncStorage mocks to default successful behavior
+    mockAsyncStorage.getItem.mockReset().mockResolvedValue(null);
+    mockAsyncStorage.setItem.mockReset().mockResolvedValue(undefined);
+    mockAsyncStorage.removeItem.mockReset().mockResolvedValue(undefined);
+    mockAsyncStorage.clear.mockReset().mockResolvedValue(undefined);
   });
 
   const mockHabit: Habit = {
@@ -134,7 +139,13 @@ describe('StorageService', () => {
     });
 
     it('should throw error on storage failure', async () => {
-      mockAsyncStorage.getItem.mockRejectedValue(new Error('Storage error'));
+      const habits = [mockHabit, { ...mockHabit, id: '2' }];
+      const entries = [mockEntry, { ...mockEntry, id: '2', habitId: '2' }];
+
+      mockAsyncStorage.getItem
+        .mockResolvedValueOnce(JSON.stringify(habits))
+        .mockResolvedValueOnce(JSON.stringify(entries));
+      mockAsyncStorage.setItem.mockRejectedValue(new Error('Storage error'));
 
       await expect(StorageService.deleteHabit('1')).rejects.toThrow('Storage error');
     });

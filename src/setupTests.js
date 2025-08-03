@@ -85,6 +85,7 @@ jest.mock('@react-native-async-storage/async-storage', () => ({
     getAllKeys: jest.fn(() => Promise.resolve([])),
     multiGet: jest.fn(() => Promise.resolve([])),
     multiSet: jest.fn(() => Promise.resolve()),
+    multiRemove: jest.fn(() => Promise.resolve()),
   },
 }));
 
@@ -122,6 +123,10 @@ jest.mock('react-native', () => {
       },
       Dimensions: {
         get: jest.fn(() => ({ width: 375, height: 667 })),
+      },
+      Linking: {
+        openURL: jest.fn(() => Promise.resolve()),
+        canOpenURL: jest.fn(() => Promise.resolve(true)),
       },
     },
     RN,
