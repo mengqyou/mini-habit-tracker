@@ -95,6 +95,12 @@ android {
         ndk {
             abiFilters "armeabi-v7a", "arm64-v8a"
         }
+        
+        // Include only necessary resources to minimize APK size
+        resConfigs "en", "xxhdpi", "xhdpi", "hdpi", "mdpi"
+        
+        // Optimize vector drawables
+        vectorDrawables.useSupportLibrary = true
     }
     signingConfigs {
         debug {
@@ -119,9 +125,21 @@ android {
             minifyEnabled enableProguardInReleaseBuilds
             proguardFiles getDefaultProguardFile("proguard-android.txt"), "proguard-rules.pro"
             
-            // Additional optimizations for smaller release builds
+            // Aggressive size optimizations while keeping all features
             shrinkResources true
             debuggable false
+            zipAlignEnabled true
+            
+            // Remove unnecessary native debug symbols
+            packagingOptions {
+                doNotStrip "*/arm64-v8a/*.so"
+                doNotStrip "*/armeabi-v7a/*.so"
+                exclude "lib/x86/**"
+                exclude "lib/x86_64/**"
+                exclude "**/kotlin_metadata"
+                exclude "META-INF/*.kotlin_module"
+                exclude "DebugProbesKt.bin"
+            }
         }
     }
 }
