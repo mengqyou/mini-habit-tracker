@@ -81,10 +81,19 @@ yarn-error.log
 # Build artifacts - APKs and AABs should not be committed
 *.apk
 *.aab
+*.apks
 android/app/build/
 android/build/
 android/temp_aab/
 temp_apk_analysis/
+android/MiniHabitTracker.apks
+
+# All build outputs that may contain API keys
+android/**/resources.pb
+android/**/BundleConfig.pb
+android/**/assets.pb
+android/**/native.pb
+android/**/*.pb
 
 # Large bundletool
 bundletool.jar
