@@ -181,6 +181,36 @@ export class FirebaseAuthService {
       console.error('❌ [Auth] Error getting stored user data:', error);
     }
     
+    // If no stored user data, attempt to restore from Google Sign-In silently
+    console.log('🔵 [Auth] Attempting silent Google Sign-In restore...');
+    try {
+      const isSignedIn = await GoogleSignin.isSignedIn();
+      console.log('🔍 [Auth] Google isSignedIn:', isSignedIn);
+      
+      if (isSignedIn) {
+        const googleUser = await GoogleSignin.getCurrentUser();
+        console.log('🔍 [Auth] Google getCurrentUser result:', googleUser ? 'exists' : 'null');
+        
+        if (googleUser?.data?.user) {
+          console.log('🔵 [Auth] Restoring user from Google Sign-In state');
+          const user = {
+            id: googleUser.data.user.id,
+            name: googleUser.data.user.name,
+            email: googleUser.data.user.email,
+            photo: googleUser.data.user.photo,
+            isGuest: false
+          };
+          
+          // Store the restored user data
+          await this.storeUserData(user);
+          console.log('✅ [Auth] User data restored and stored');
+          return user;
+        }
+      }
+    } catch (error) {
+      console.error('❌ [Auth] Error during silent restore:', error);
+    }
+    
     console.log('🔍 [Auth] No user found - returning null');
     return null;
   }

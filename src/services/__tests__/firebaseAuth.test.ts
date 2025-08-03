@@ -72,17 +72,112 @@ describe('FirebaseAuthService - Persistent Authentication', () => {
       expect(mockAsyncStorage.getItem).toHaveBeenCalledWith('user_data');
     });
 
-    it('should return null if no user data exists', async () => {
+    it('should attempt silent Google Sign-In restore when no stored data exists', async () => {
+      const mockGoogleUser = {
+        data: {
+          user: {
+            id: 'restored-google-id',
+            name: 'Restored User',
+            email: 'restored@example.com',
+            photo: 'http://example.com/restored-photo.jpg'
+          }
+        }
+      };
+
       mockAuth.mockReturnValue({
         currentUser: null,
       } as any);
 
       mockAsyncStorage.getItem.mockResolvedValue(null);
+      mockGoogleSignin.isSignedIn.mockResolvedValue(true);
+      mockGoogleSignin.getCurrentUser.mockResolvedValue(mockGoogleUser);
+      mockAsyncStorage.setItem.mockResolvedValue();
+
+      const result = await FirebaseAuthService.getCurrentUser();
+
+      expect(mockGoogleSignin.isSignedIn).toHaveBeenCalled();
+      expect(mockGoogleSignin.getCurrentUser).toHaveBeenCalled();
+      expect(result).toEqual({
+        id: 'restored-google-id',
+        name: 'Restored User',
+        email: 'restored@example.com',
+        photo: 'http://example.com/restored-photo.jpg',
+        isGuest: false
+      });
+      
+      // Should store the restored user data
+      expect(mockAsyncStorage.setItem).toHaveBeenCalledWith(
+        'user_data',
+        JSON.stringify({
+          id: 'restored-google-id',
+          name: 'Restored User',
+          email: 'restored@example.com',
+          photo: 'http://example.com/restored-photo.jpg',
+          isGuest: false
+        })
+      );
+    });
+
+    it('should return null when Google Sign-In restore fails', async () => {
+      mockAuth.mockReturnValue({
+        currentUser: null,
+      } as any);
+
+      mockAsyncStorage.getItem.mockResolvedValue(null);
+      mockGoogleSignin.isSignedIn.mockResolvedValue(false);
+
+      const result = await FirebaseAuthService.getCurrentUser();
+
+      expect(mockGoogleSignin.isSignedIn).toHaveBeenCalled();
+      expect(mockGoogleSignin.getCurrentUser).not.toHaveBeenCalled();
+      expect(result).toBeNull();
+      expect(mockAsyncStorage.setItem).not.toHaveBeenCalled();
+    });
+
+    it('should return null when Google getCurrentUser returns null', async () => {
+      mockAuth.mockReturnValue({
+        currentUser: null,
+      } as any);
+
+      mockAsyncStorage.getItem.mockResolvedValue(null);
+      mockGoogleSignin.isSignedIn.mockResolvedValue(true);
+      mockGoogleSignin.getCurrentUser.mockResolvedValue(null);
+
+      const result = await FirebaseAuthService.getCurrentUser();
+
+      expect(mockGoogleSignin.isSignedIn).toHaveBeenCalled();
+      expect(mockGoogleSignin.getCurrentUser).toHaveBeenCalled();
+      expect(result).toBeNull();
+      expect(mockAsyncStorage.setItem).not.toHaveBeenCalled();
+    });
+
+    it('should handle Google Sign-In restore errors gracefully', async () => {
+      mockAuth.mockReturnValue({
+        currentUser: null,
+      } as any);
+
+      mockAsyncStorage.getItem.mockResolvedValue(null);
+      mockGoogleSignin.isSignedIn.mockRejectedValue(new Error('Google Sign-In error'));
+
+      const result = await FirebaseAuthService.getCurrentUser();
+
+      expect(result).toBeNull();
+      expect(mockAsyncStorage.setItem).not.toHaveBeenCalled();
+    });
+
+    it('should return null if no user data exists and Google restore unavailable', async () => {
+      mockAuth.mockReturnValue({
+        currentUser: null,
+      } as any);
+
+      mockAsyncStorage.getItem.mockResolvedValue(null);
+      mockGoogleSignin.isSignedIn.mockResolvedValue(false);
 
       const result = await FirebaseAuthService.getCurrentUser();
 
       expect(result).toBeNull();
       expect(mockAsyncStorage.getItem).toHaveBeenCalledWith('user_data');
+      expect(mockGoogleSignin.isSignedIn).toHaveBeenCalled();
     });
 
     it('should handle AsyncStorage errors gracefully', async () => {
@@ -259,6 +354,90 @@ describe('FirebaseAuthService - Persistent Authentication', () => {
 
       // Should not even check AsyncStorage
       expect(mockAsyncStorage.getItem).not.toHaveBeenCalled();
+    });
+  });
+
+  describe('App reinstall scenarios', () => {
+    it('should restore user session after app reinstall when Google Sign-In persists', async () => {
+      // Simulate app reinstall: Firebase auth cleared, AsyncStorage cleared, but Google Sign-In persists
+      const mockGoogleUser = {
+        data: {
+          user: {
+            id: 'reinstall-user-id',
+            name: 'Reinstall User',
+            email: 'reinstall@example.com',
+            photo: 'http://example.com/reinstall-photo.jpg'
+          }
+        }
+      };
+
+      mockAuth.mockReturnValue({
+        currentUser: null, // Firebase auth cleared after reinstall
+      } as any);
+
+      mockAsyncStorage.getItem.mockResolvedValue(null); // AsyncStorage cleared after reinstall
+      mockGoogleSignin.isSignedIn.mockResolvedValue(true); // Google Sign-In persists on device
+      mockGoogleSignin.getCurrentUser.mockResolvedValue(mockGoogleUser);
+      mockAsyncStorage.setItem.mockResolvedValue();
+
+      const result = await FirebaseAuthService.getCurrentUser();
+
+      // Should successfully restore user from Google Sign-In
+      expect(result).toEqual({
+        id: 'reinstall-user-id',
+        name: 'Reinstall User',
+        email: 'reinstall@example.com',
+        photo: 'http://example.com/reinstall-photo.jpg',
+        isGuest: false
+      });
+
+      // Should store the restored data for future use
+      expect(mockAsyncStorage.setItem).toHaveBeenCalledWith(
+        'user_data',
+        JSON.stringify({
+          id: 'reinstall-user-id',
+          name: 'Reinstall User',
+          email: 'reinstall@example.com',
+          photo: 'http://example.com/reinstall-photo.jpg',
+          isGuest: false
+        })
+      );
+    });
+
+    it('should handle complete data loss after reinstall gracefully', async () => {
+      // Simulate complete data loss: Firebase auth cleared, AsyncStorage cleared, Google Sign-In cleared
+      mockAuth.mockReturnValue({
+        currentUser: null,
+      } as any);
+
+      mockAsyncStorage.getItem.mockResolvedValue(null);
+      mockGoogleSignin.isSignedIn.mockResolvedValue(false); // User signed out of Google too
+
+      const result = await FirebaseAuthService.getCurrentUser();
+
+      expect(result).toBeNull();
+      expect(mockGoogleSignin.isSignedIn).toHaveBeenCalled();
+      expect(mockGoogleSignin.getCurrentUser).not.toHaveBeenCalled();
+      expect(mockAsyncStorage.setItem).not.toHaveBeenCalled();
+    });
+
+    it('should check all authentication sources during reinstall', async () => {
+      // Test that all authentication sources are checked: Firebase > AsyncStorage > Google Restore
+      mockAuth.mockReturnValue({
+        currentUser: null,
+      } as any);
+
+      mockAsyncStorage.getItem.mockResolvedValue(null);
+      mockGoogleSignin.isSignedIn.mockResolvedValue(true);
+      mockGoogleSignin.getCurrentUser.mockResolvedValue(null);
+
+      const result = await FirebaseAuthService.getCurrentUser();
+
+      // Verify all sources were checked
+      expect(mockAsyncStorage.getItem).toHaveBeenCalledWith('user_data');
+      expect(mockGoogleSignin.isSignedIn).toHaveBeenCalled();
+      expect(mockGoogleSignin.getCurrentUser).toHaveBeenCalled();
+      expect(result).toBeNull();
     });
   });
 

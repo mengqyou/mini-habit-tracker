@@ -174,28 +174,46 @@ export const HabitDashboard: React.FC<HabitDashboardProps> = ({
       .filter(e => e.habitId === habit.id)
       .sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
     
+    if (habitEntries.length === 0) return 0;
+    
     let streak = 0;
     let checkDate = new Date();
+    
+    // First check if we have an entry for today
+    const todayStr = today;
+    const hasTodayEntry = habitEntries.some(e => e.date === todayStr);
+    
+    console.log('🔵 [getStreakCount]', habit.name, 'total entries:', habitEntries.length, 'hasTodayEntry:', hasTodayEntry);
+    
+    // Start checking from yesterday first to establish if there's a previous streak
+    checkDate.setDate(checkDate.getDate() - 1); // Start from yesterday
     
     for (let i = 0; i < 30; i++) {
       const dateStr = checkDate.toISOString().split('T')[0];
       const hasEntry = habitEntries.some(e => e.date === dateStr);
       
       if (hasEntry) {
-        if (dateStr === today || streak > 0) {
-          streak++;
-        }
+        streak++;
+        console.log('🔵 [getStreakCount] Found entry for', dateStr, 'streak now:', streak);
       } else {
-        if (dateStr === today) {
-          break;
-        } else if (streak > 0) {
-          break;
-        }
+        console.log('🔵 [getStreakCount] No entry for', dateStr, 'breaking streak at:', streak);
+        break; // Break streak on first missing day
       }
       
       checkDate.setDate(checkDate.getDate() - 1);
     }
     
+    // Only add today to streak if we have yesterday's entry (continuing streak)
+    // or if today is the very first entry ever
+    if (hasTodayEntry) {
+      const shouldAddToday = streak > 0 || habitEntries.length === 1;
+      console.log('🔵 [getStreakCount] Should add today?', shouldAddToday, '(streak from yesterday:', streak, 'total entries:', habitEntries.length, ')');
+      if (shouldAddToday) {
+        streak++;
+      }
+    }
+    
+    console.log('🔵 [getStreakCount] Final streak for', habit.name, ':', streak);
     return streak;
   };
 
