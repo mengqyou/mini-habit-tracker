@@ -97,11 +97,23 @@ android {
         }
         
         // Include only necessary resources to minimize APK size
-        resConfigs "en", "xxhdpi", "xhdpi", "hdpi", "mdpi"
+        // Note: Removed density filtering to fix AAPT2 build error
+        resConfigs "en"
         
         // Optimize vector drawables
         vectorDrawables.useSupportLibrary = true
     }
+    
+    // APK splits configuration - disabled for simpler debug builds
+    splits {
+        abi {
+            enable false  // Disable ABI splits for compatibility
+        }
+        density {
+            enable false  // Disable density splits to avoid AAPT2 errors
+        }
+    }
+    
     signingConfigs {
         debug {
             storeFile file('debug.keystore')
