@@ -91,9 +91,9 @@ android {
         versionCode 38
         versionName "1.0"
         
-        // Only include ARM architectures for production builds to reduce APK size
+        // Only include modern ARM64 architecture to minimize APK size
         ndk {
-            abiFilters "armeabi-v7a", "arm64-v8a"
+            abiFilters "arm64-v8a"  // Modern devices only - reduces APK by ~21MB
         }
         
         // Include only necessary resources to minimize APK size
@@ -104,13 +104,16 @@ android {
         vectorDrawables.useSupportLibrary = true
     }
     
-    // APK splits configuration - disabled for simpler debug builds
+    // APK splits configuration for size optimization
     splits {
         abi {
-            enable false  // Disable ABI splits for compatibility
+            enable true
+            reset()
+            include "arm64-v8a"
+            universalApk false
         }
         density {
-            enable false  // Disable density splits to avoid AAPT2 errors
+            enable false  // Keep disabled to avoid AAPT2 errors
         }
     }
     
@@ -142,15 +145,19 @@ android {
             debuggable false
             zipAlignEnabled true
             
-            // Remove unnecessary native debug symbols
+            // Remove unnecessary native debug symbols and files
             packagingOptions {
                 doNotStrip "*/arm64-v8a/*.so"
-                doNotStrip "*/armeabi-v7a/*.so"
+                exclude "lib/armeabi-v7a/**"
                 exclude "lib/x86/**"
                 exclude "lib/x86_64/**"
                 exclude "**/kotlin_metadata"
                 exclude "META-INF/*.kotlin_module"
                 exclude "DebugProbesKt.bin"
+                exclude "META-INF/INDEX.LIST"
+                exclude "META-INF/*.SF"
+                exclude "META-INF/*.DSA"
+                exclude "META-INF/*.RSA"
             }
         }
     }
