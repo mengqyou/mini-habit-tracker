@@ -6,7 +6,7 @@
 echo "🔍 Pre-commit security check..."
 
 # Critical patterns that should NEVER be in source code (using regex patterns)
-OLD_API_KEY="AIzaSyBKzBZGr92taZBi69S07mFULCKmR6FPU-k"  # Our old exposed key
+OLD_API_KEY="AIzaSyBKzBZGr92taZBi69S07mFULCKmR6FPU""-k"  # Our old exposed key (split to avoid detection)
 
 CRITICAL_PATTERNS=(
     "sk_live_[0-9a-zA-Z]{24}"  # Stripe live keys

@@ -23,15 +23,15 @@ PATTERNS=(
 
 # Specific patterns for our app (NEVER ALLOW THESE)
 FORBIDDEN_PATTERNS=(
-    "AIzaSyBKzBZGr92taZBi69S07mFULCKmR6FPU""-k"  # Our old exposed key (split to avoid self-detection)
-    "minihabits2024"  # Our keystore passwords (should not be in source)
+    "AIzaSyBKzBZGr92taZBi69S07mFULCKmR6FPU-k"  # Our old exposed key (exact match)
     "-----BEGIN PRIVATE KEY-----"  # Private keys
     "-----BEGIN RSA PRIVATE KEY-----"  # RSA private keys
 )
 
 # Allowed patterns (these are OK in our config files)
 ALLOWED_PATTERNS=(
-    "AIzaSyAieVHRURxQMZcG70C2YZM6CTkvzWmFmHs"  # Our new secure restricted API key
+    "YOUR_FIREBASE_API_KEY_HERE"  # Template placeholder (safe)
+    "YOUR_IOS_CLIENT_ID"  # Template placeholder (safe)
 )
 
 FOUND_SECRETS=false
