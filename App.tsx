@@ -471,6 +471,50 @@ function App() {
     }
   };
 
+  const handleEntryDelete = async (entry: HabitEntry) => {
+    try {
+      console.log('🔵 [EntryDelete] Starting entry deletion...');
+      console.log('🔍 [EntryDelete] entry:', { id: entry.id, habitId: entry.habitId, date: entry.date });
+      
+      if (useFirebase && user && !user.isGuest) {
+        console.log('🔵 [EntryDelete] Using Firebase storage...');
+        
+        // Remove from optimistic entries
+        const filteredOptimistic = optimisticEntriesRef.current.filter(e => e.id !== entry.id);
+        optimisticEntriesRef.current = filteredOptimistic;
+        setOptimisticEntries(filteredOptimistic);
+        
+        // Update entries immediately
+        setEntries(prev => prev.filter(e => e.id !== entry.id));
+        
+        // Delete from Firebase
+        await FirebaseStorageService.deleteEntry(entry.id);
+        console.log('✅ [EntryDelete] Entry deleted from Firebase');
+      } else {
+        console.log('🔵 [EntryDelete] Using local storage...');
+        // Local storage - immediate update
+        setEntries(entries.filter(e => e.id !== entry.id));
+        await StorageService.deleteEntry(entry.id);
+        console.log('✅ [EntryDelete] Entry deleted from local storage');
+      }
+      
+      console.log('✅ [EntryDelete] Entry deletion completed');
+    } catch (error) {
+      console.error('❌ [EntryDelete] Error deleting entry:', error);
+      
+      if (useFirebase && user && !user.isGuest) {
+        // Revert optimistic update on error
+        const revertedOptimistic = [...optimisticEntriesRef.current, entry];
+        optimisticEntriesRef.current = revertedOptimistic;
+        setOptimisticEntries(revertedOptimistic);
+      }
+      
+      // Revert the main entries state
+      setEntries(prev => [...prev, entry]);
+      Alert.alert('Error', `Failed to delete entry: ${error}`);
+    }
+  };
+
   const renderContent = () => {
     console.log('🔵 [renderContent] habitsLoading:', habitsLoading, 'habits.length:', habits.length, 'editingHabit:', editingHabit, 'currentView:', currentView);
     
@@ -510,6 +554,7 @@ function App() {
           entries={entries}
           onEntryAdd={handleEntryAdd}
           onEntryUpdate={handleEntryUpdate}
+          onEntryDelete={handleEntryDelete}
           onHabitEdit={handleHabitEdit}
           onHabitDelete={handleHabitDelete}
           onHabitStatusChange={handleHabitStatusChange}

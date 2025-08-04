@@ -15,6 +15,7 @@ interface HabitDashboardProps {
   entries: HabitEntry[];
   onEntryAdd: (entry: HabitEntry) => void;
   onEntryUpdate: (entry: HabitEntry) => void;
+  onEntryDelete: (entry: HabitEntry) => void;
   onHabitEdit?: (habit: Habit) => void;
   onHabitDelete?: (habit: Habit) => void;
   onHabitStatusChange?: (habit: Habit, newStatus: HabitStatus) => void;
@@ -26,6 +27,7 @@ export const HabitDashboard: React.FC<HabitDashboardProps> = ({
   entries,
   onEntryAdd,
   onEntryUpdate,
+  onEntryDelete,
   onHabitEdit,
   onHabitDelete,
   onHabitStatusChange,
@@ -33,6 +35,8 @@ export const HabitDashboard: React.FC<HabitDashboardProps> = ({
 }) => {
   // State to force refresh when date changes
   const [refreshKey, setRefreshKey] = useState(0);
+  // Debug state to show what's happening
+  const [debugInfo, setDebugInfo] = useState('');
 
   // Calculate today's date fresh each time - important for daily refresh
   const today = useMemo(() => {
@@ -109,25 +113,44 @@ export const HabitDashboard: React.FC<HabitDashboardProps> = ({
   }, [todayEntries]);
 
   const handleLevelSelect = useCallback(async (habit: Habit, levelId: string) => {
-    console.log('🔵 [HabitDashboard] handleLevelSelect called for habit:', habit.name, 'levelId:', levelId);
+    setDebugInfo(`Called: ${habit.name} - ${levelId}`);
     
     const level = habit.levels.find(l => l.id === levelId);
     if (!level) return;
 
     const existingEntry = getTodayEntryForHabit(habit.id);
-    console.log('🔵 [HabitDashboard] existingEntry:', existingEntry ? 'exists' : 'null');
+    
+    // Check if clicking the same level as currently selected (unclick scenario)
+    if (existingEntry) {
+      setDebugInfo(`Entry exists: ${existingEntry.levelId} vs ${levelId} = ${existingEntry.levelId === levelId}`);
+      if (existingEntry.levelId === levelId) {
+        setDebugInfo('UNCLICKING!');
+        onEntryDelete(existingEntry);
+        
+        Alert.alert(
+          'Habit Unclicked',
+          `${habit.name} has been unmarked for today`,
+          [{ text: 'OK' }]
+        );
+        return;
+      }
+    } else {
+      setDebugInfo('No existing entry found');
+    }
 
     let updatedEntry: HabitEntry;
     
     if (existingEntry) {
+      // Switching to a different level
       updatedEntry = {
         ...existingEntry,
         levelId,
         timestamp: new Date(),
       };
-      console.log('🔵 [HabitDashboard] Updating existing entry');
+      console.log('🔵 [HabitDashboard] Updating existing entry to different level');
       onEntryUpdate(updatedEntry);
     } else {
+      // Creating new entry
       updatedEntry = {
         id: Date.now().toString(),
         habitId: habit.id,
@@ -148,7 +171,7 @@ export const HabitDashboard: React.FC<HabitDashboardProps> = ({
       `${habit.name}: ${level.name} - ${level.description}`,
       [{ text: 'OK' }]
     );
-  }, [today, onEntryAdd, onEntryUpdate, getTodayEntryForHabit]);
+  }, [today, onEntryAdd, onEntryUpdate, onEntryDelete, getTodayEntryForHabit]);
 
   const getCompletionStatus = (habit: Habit) => {
     const entry = getTodayEntryForHabit(habit.id);
@@ -288,6 +311,12 @@ export const HabitDashboard: React.FC<HabitDashboardProps> = ({
       <View style={styles.header}>
         <Text style={styles.dateText}>{todayFormatted}</Text>
         <Text style={styles.subtitle}>Track your daily habits</Text>
+        {debugInfo && (
+          <Text style={styles.debugText}>DEBUG: {debugInfo}</Text>
+        )}
+        <Text style={styles.debugText}>
+          Habits: {filteredHabits.map(h => `${h.name}(status:${h.status || 'undefined'})`).join(', ')}
+        </Text>
       </View>
 
       <View style={styles.habitsContainer}>
@@ -376,7 +405,12 @@ export const HabitDashboard: React.FC<HabitDashboardProps> = ({
                         },
                         !isActive && styles.disabledLevelButton,
                       ]}
-                      onPress={() => isActive && handleLevelSelect(habit, level.id)}
+                      onPress={() => {
+                        setDebugInfo(`Button pressed: ${habit.name} - ${level.id} - isActive: ${isActive}`);
+                        if (isActive) {
+                          handleLevelSelect(habit, level.id);
+                        }
+                      }}
                       disabled={!isActive}
                     >
                       <Text style={[
@@ -398,7 +432,7 @@ export const HabitDashboard: React.FC<HabitDashboardProps> = ({
 
               {completedLevel && (
                 <Text style={styles.changeHint}>
-                  Tap another level to change your completion
+                  Tap the same level to unclick, or tap another level to change
                 </Text>
               )}
             </View>
@@ -447,6 +481,14 @@ const styles = StyleSheet.create({
   subtitle: {
     fontSize: 14,
     color: '#666',
+  },
+  debugText: {
+    fontSize: 12,
+    color: '#ff0000',
+    backgroundColor: '#ffcccc',
+    padding: 5,
+    marginTop: 5,
+    borderRadius: 3,
   },
   habitsContainer: {
     padding: 15,

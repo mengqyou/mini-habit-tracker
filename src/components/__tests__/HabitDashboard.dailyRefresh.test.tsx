@@ -34,6 +34,7 @@ describe('HabitDashboard - Daily Refresh System', () => {
     entries: mockEntries,
     onEntryAdd: jest.fn(),
     onEntryUpdate: jest.fn(),
+    onEntryDelete: jest.fn(),
     onHabitEdit: jest.fn(),
     onHabitDelete: jest.fn(),
     onHabitStatusChange: jest.fn(),

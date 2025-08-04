@@ -90,6 +90,17 @@ export class StorageService {
     }
   }
 
+  static async deleteEntry(entryId: string): Promise<void> {
+    try {
+      const entries = await this.getEntries();
+      const filteredEntries = entries.filter(e => e.id !== entryId);
+      await AsyncStorage.setItem(ENTRIES_KEY, JSON.stringify(filteredEntries));
+    } catch (error) {
+      console.error('Error deleting entry:', error);
+      throw error;
+    }
+  }
+
   static async getEntriesForHabit(habitId: string): Promise<HabitEntry[]> {
     try {
       const entries = await this.getEntries();

@@ -196,6 +196,15 @@ export class FirebaseStorageService {
     }
   }
 
+  static async deleteEntry(entryId: string): Promise<void> {
+    try {
+      await this.entriesCollection.doc(entryId).delete();
+    } catch (error) {
+      console.error('Error deleting entry:', error);
+      throw error;
+    }
+  }
+
   static async getEntriesForHabit(userId: string, habitId: string): Promise<HabitEntry[]> {
     try {
       const snapshot = await this.entriesCollection
