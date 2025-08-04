@@ -55,9 +55,39 @@ jobs:
     - name: Install npm dependencies
       run: npm ci
 
-    - name: Create Google Services JSON
+    - name: Create dummy Google Services JSON (for build)
       run: |
-        echo '${{ secrets.GOOGLE_SERVICES_JSON }}' > android/app/google-services.json
+        mkdir -p android/app
+        cat > android/app/google-services.json << 'EOF'
+        {
+          "project_info": {
+            "project_number": "123456789",
+            "project_id": "dummy-project-id"
+          },
+          "client": [
+            {
+              "client_info": {
+                "mobilesdk_app_id": "1:123456789:android:dummy",
+                "android_client_info": {
+                  "package_name": "com.minihabittracker"
+                }
+              },
+              "oauth_client": [],
+              "api_key": [
+                {
+                  "current_key": "AIzaSyDummyKeyForBuildOnly1234567890123456"
+                }
+              ],
+              "services": {
+                "appinvite_service": {
+                  "other_platform_oauth_client": []
+                }
+              }
+            }
+          ],
+          "configuration_version": "1"
+        }
+        EOF
 
     - name: Make Gradlew executable
       run: chmod +x android/gradlew
