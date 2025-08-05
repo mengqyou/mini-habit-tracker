@@ -35,8 +35,8 @@ export const HabitDashboard: React.FC<HabitDashboardProps> = ({
 }) => {
   // State to force refresh when date changes
   const [refreshKey, setRefreshKey] = useState(0);
-  // Debug state to show what's happening
-  const [debugInfo, setDebugInfo] = useState('');
+  // Track locally deleted entries for immediate visual feedback
+  const [locallyDeletedEntries, setLocallyDeletedEntries] = useState<Set<string>>(new Set());
 
   // Calculate today's date fresh each time - important for daily refresh
   const today = useMemo(() => {
@@ -87,18 +87,35 @@ export const HabitDashboard: React.FC<HabitDashboardProps> = ({
     };
   }, [today]);
 
+  // Clean up locally deleted entries when they're actually removed from the entries array
+  useEffect(() => {
+    const entryIds = new Set(entries.map(e => e.id));
+    setLocallyDeletedEntries(prev => {
+      const cleaned = new Set();
+      for (const deletedId of prev) {
+        if (entryIds.has(deletedId)) {
+          cleaned.add(deletedId); // Keep if still in entries array
+        }
+      }
+      if (cleaned.size !== prev.size) {
+        console.log('🔵 [HabitDashboard] Cleaned up locally deleted entries:', prev.size, '->', cleaned.size);
+      }
+      return cleaned;
+    });
+  }, [entries]);
+
   const todayEntries = useMemo(() => {
     const filtered = entries.filter(entry => {
-      const match = entry.date === today;
-      if (match) {
-        console.log('🔵 [HabitDashboard] Found today entry:', entry.habitId, 'level:', entry.levelId);
+      const match = entry.date === today && !locallyDeletedEntries.has(entry.id);
+      if (entry.date === today) {
+        console.log('🔵 [HabitDashboard] Today entry:', entry.habitId, 'level:', entry.levelId, 'deleted:', locallyDeletedEntries.has(entry.id));
       }
       return match;
     });
-    console.log('🔵 [HabitDashboard] Total today entries:', filtered.length, 'out of', entries.length, 'total entries');
+    console.log('🔵 [HabitDashboard] Total today entries:', filtered.length, 'out of', entries.length, 'total entries, locally deleted:', locallyDeletedEntries.size);
     console.log('🔵 [HabitDashboard] All entry dates:', entries.map(e => e.date));
     return filtered;
-  }, [entries, today]);
+  }, [entries, today, locallyDeletedEntries]);
 
   const filteredHabits = useMemo(() => {
     if (showInactiveHabits) {
@@ -108,23 +125,33 @@ export const HabitDashboard: React.FC<HabitDashboardProps> = ({
     }
   }, [habits, showInactiveHabits]);
 
+  // Get today's entries without local deletion filter (for logic operations)
+  const getRawTodayEntryForHabit = useCallback((habitId: string) => {
+    const rawTodayEntries = entries.filter(entry => entry.date === today);
+    return rawTodayEntries.find(entry => entry.habitId === habitId);
+  }, [entries, today]);
+
+  // Get today's entries with local deletion filter (for display)
   const getTodayEntryForHabit = useCallback((habitId: string) => {
     return todayEntries.find(entry => entry.habitId === habitId);
   }, [todayEntries]);
 
   const handleLevelSelect = useCallback(async (habit: Habit, levelId: string) => {
-    setDebugInfo(`Called: ${habit.name} - ${levelId}`);
-    
     const level = habit.levels.find(l => l.id === levelId);
     if (!level) return;
 
-    const existingEntry = getTodayEntryForHabit(habit.id);
+    const existingEntry = getRawTodayEntryForHabit(habit.id);
+    const isLocallyDeleted = existingEntry ? locallyDeletedEntries.has(existingEntry.id) : false;
     
-    // Check if clicking the same level as currently selected (unclick scenario)
-    if (existingEntry) {
-      setDebugInfo(`Entry exists: ${existingEntry.levelId} vs ${levelId} = ${existingEntry.levelId === levelId}`);
+    // Check if clicking the same level as currently selected (unclick scenario) 
+    if (existingEntry && !isLocallyDeleted) {
       if (existingEntry.levelId === levelId) {
-        setDebugInfo('UNCLICKING!');
+        
+        // Immediate visual feedback - mark as locally deleted
+        console.log('🔵 [HabitDashboard] Adding entry to locally deleted:', existingEntry.id);
+        setLocallyDeletedEntries(prev => new Set([...prev, existingEntry.id]));
+        
+        // Call the actual delete function (async)
         onEntryDelete(existingEntry);
         
         Alert.alert(
@@ -134,23 +161,29 @@ export const HabitDashboard: React.FC<HabitDashboardProps> = ({
         );
         return;
       }
-    } else {
-      setDebugInfo('No existing entry found');
     }
 
     let updatedEntry: HabitEntry;
     
-    if (existingEntry) {
-      // Switching to a different level
+    if (existingEntry && !isLocallyDeleted) {
+      // Switching to a different level for existing entry
       updatedEntry = {
         ...existingEntry,
         levelId,
         timestamp: new Date(),
       };
       console.log('🔵 [HabitDashboard] Updating existing entry to different level');
+      
+      // Remove from locally deleted entries if it was there
+      setLocallyDeletedEntries(prev => {
+        const updated = new Set(prev);
+        updated.delete(existingEntry.id);
+        return updated;
+      });
+      
       onEntryUpdate(updatedEntry);
     } else {
-      // Creating new entry
+      // Creating new entry (either no existing entry or existing entry was locally deleted)
       updatedEntry = {
         id: Date.now().toString(),
         habitId: habit.id,
@@ -159,6 +192,16 @@ export const HabitDashboard: React.FC<HabitDashboardProps> = ({
         timestamp: new Date(),
       };
       console.log('🔵 [HabitDashboard] Adding new entry, will wait 200ms');
+      
+      // If there was a locally deleted entry, remove it from the set
+      if (existingEntry && isLocallyDeleted) {
+        setLocallyDeletedEntries(prev => {
+          const updated = new Set(prev);
+          updated.delete(existingEntry.id);
+          return updated;
+        });
+      }
+      
       onEntryAdd(updatedEntry);
       
       // Add a small delay specifically for new entries to ensure optimistic update takes hold
@@ -171,7 +214,7 @@ export const HabitDashboard: React.FC<HabitDashboardProps> = ({
       `${habit.name}: ${level.name} - ${level.description}`,
       [{ text: 'OK' }]
     );
-  }, [today, onEntryAdd, onEntryUpdate, onEntryDelete, getTodayEntryForHabit]);
+  }, [today, onEntryAdd, onEntryUpdate, onEntryDelete, getRawTodayEntryForHabit, locallyDeletedEntries]);
 
   const getCompletionStatus = (habit: Habit) => {
     const entry = getTodayEntryForHabit(habit.id);
@@ -311,12 +354,6 @@ export const HabitDashboard: React.FC<HabitDashboardProps> = ({
       <View style={styles.header}>
         <Text style={styles.dateText}>{todayFormatted}</Text>
         <Text style={styles.subtitle}>Track your daily habits</Text>
-        {debugInfo && (
-          <Text style={styles.debugText}>DEBUG: {debugInfo}</Text>
-        )}
-        <Text style={styles.debugText}>
-          Habits: {filteredHabits.map(h => `${h.name}(status:${h.status || 'undefined'})`).join(', ')}
-        </Text>
       </View>
 
       <View style={styles.habitsContainer}>
@@ -406,7 +443,6 @@ export const HabitDashboard: React.FC<HabitDashboardProps> = ({
                         !isActive && styles.disabledLevelButton,
                       ]}
                       onPress={() => {
-                        setDebugInfo(`Button pressed: ${habit.name} - ${level.id} - isActive: ${isActive}`);
                         if (isActive) {
                           handleLevelSelect(habit, level.id);
                         }
@@ -481,14 +517,6 @@ const styles = StyleSheet.create({
   subtitle: {
     fontSize: 14,
     color: '#666',
-  },
-  debugText: {
-    fontSize: 12,
-    color: '#ff0000',
-    backgroundColor: '#ffcccc',
-    padding: 5,
-    marginTop: 5,
-    borderRadius: 3,
   },
   habitsContainer: {
     padding: 15,

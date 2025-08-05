@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef, useMemo } from 'react';
 import {
   SafeAreaView,
   StatusBar,
@@ -515,6 +515,22 @@ function App() {
     }
   };
 
+  // Combine entries with optimistic updates for immediate UI feedback
+  // This must be at component level to avoid hooks violations
+  const combinedEntries = useMemo(() => {
+    if (useFirebase && user && !user.isGuest) {
+      // For Firebase: merge entries with optimistic entries, optimistic takes priority
+      const optimisticIds = new Set(optimisticEntries.map(e => e.id));
+      const baseEntries = entries.filter(e => !optimisticIds.has(e.id));
+      const combined = [...baseEntries, ...optimisticEntries];
+      console.log('🔵 [CombinedEntries] Base entries:', baseEntries.length, 'Optimistic:', optimisticEntries.length, 'Combined:', combined.length);
+      return combined;
+    } else {
+      // For local storage: just use entries directly (no optimistic needed)
+      return entries;
+    }
+  }, [entries, optimisticEntries, useFirebase, user]);
+
   const renderContent = () => {
     console.log('🔵 [renderContent] habitsLoading:', habitsLoading, 'habits.length:', habits.length, 'editingHabit:', editingHabit, 'currentView:', currentView);
     
@@ -551,7 +567,7 @@ function App() {
       return (
         <HabitDashboard
           habits={habits}
-          entries={entries}
+          entries={combinedEntries}
           onEntryAdd={handleEntryAdd}
           onEntryUpdate={handleEntryUpdate}
           onEntryDelete={handleEntryDelete}
@@ -567,7 +583,7 @@ function App() {
       return (
         <HabitTracker
           habit={selectedHabit}
-          entries={entries}
+          entries={combinedEntries}
           onEntryAdd={handleEntryAdd}
           onEntryUpdate={handleEntryUpdate}
         />
