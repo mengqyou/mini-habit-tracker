@@ -91,10 +91,7 @@ android {
         versionCode 38
         versionName "1.0"
         
-        // Only include modern ARM64 architecture to minimize APK size
-        ndk {
-            abiFilters "arm64-v8a"  // Modern devices only - reduces APK by ~21MB
-        }
+        // Architecture filtering handled by splits configuration below
         
         // Include only necessary resources to minimize APK size
         // Note: Removed density filtering to fix AAPT2 build error
