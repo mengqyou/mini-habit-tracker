@@ -37,8 +37,11 @@ local.properties
 
 # Firebase/Google Services - Contains sensitive API keys
 android/app/google-services.json
+android/app/google-services.json.bak
 google-services.json
 ios/MiniHabitTracker/GoogleService-Info.plist.backup
+ios/MiniHabitTracker/GoogleService-Info.plist.bak
+*.bak
 
 # node.js
 #
