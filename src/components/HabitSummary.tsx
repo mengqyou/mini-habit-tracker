@@ -5,7 +5,7 @@ import {
   StyleSheet,
   ScrollView,
 } from 'react-native';
-import { Habit, HabitEntry, HabitSummary as SummaryType } from '../types';
+import { Habit, HabitEntry, HabitSummary as SummaryType, getLocalDateString } from '../types';
 
 interface HabitSummaryProps {
   habit: Habit;
@@ -137,7 +137,7 @@ function calculateSummary(habit: Habit, entries: HabitEntry[]): SummaryType {
   checkDate.setHours(0, 0, 0, 0);
   
   for (let i = 0; i < 365; i++) {
-    const dateStr = checkDate.toISOString().split('T')[0];
+    const dateStr = getLocalDateString(checkDate);
     const hasEntry = sortedEntries.some(e => e.date === dateStr);
     
     if (hasEntry) {

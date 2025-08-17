@@ -6,7 +6,7 @@ import {
   StyleSheet,
   ScrollView,
 } from 'react-native';
-import { Habit, HabitEntry } from '../types';
+import { Habit, HabitEntry, getTodayString, getLocalDateString } from '../types';
 
 interface AllHabitsSummaryProps {
   habits: Habit[];
@@ -20,7 +20,7 @@ export const AllHabitsSummary: React.FC<AllHabitsSummaryProps> = ({
   onHabitSelect,
 }) => {
   const overallStats = useMemo(() => {
-    const today = new Date().toISOString().split('T')[0];
+    const today = getTodayString();
     const startOfWeek = new Date();
     startOfWeek.setDate(startOfWeek.getDate() - startOfWeek.getDay());
     startOfWeek.setHours(0, 0, 0, 0);
@@ -49,7 +49,7 @@ export const AllHabitsSummary: React.FC<AllHabitsSummaryProps> = ({
 
   const getHabitStats = (habit: Habit) => {
     const habitEntries = entries.filter(e => e.habitId === habit.id);
-    const today = new Date().toISOString().split('T')[0];
+    const today = getTodayString();
     const todayEntry = habitEntries.find(e => e.date === today);
     
     // Calculate current streak
@@ -57,7 +57,7 @@ export const AllHabitsSummary: React.FC<AllHabitsSummaryProps> = ({
     let checkDate = new Date();
     
     for (let i = 0; i < 30; i++) {
-      const dateStr = checkDate.toISOString().split('T')[0];
+      const dateStr = getLocalDateString(checkDate);
       const hasEntry = habitEntries.some(e => e.date === dateStr);
       
       if (hasEntry) {

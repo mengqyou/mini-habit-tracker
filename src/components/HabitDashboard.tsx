@@ -8,7 +8,7 @@ import {
   Alert,
   AppState,
 } from 'react-native';
-import { Habit, HabitEntry, HabitStatus } from '../types';
+import { Habit, HabitEntry, HabitStatus, getTodayString } from '../types';
 
 interface HabitDashboardProps {
   habits: Habit[];
@@ -39,9 +39,10 @@ export const HabitDashboard: React.FC<HabitDashboardProps> = ({
   const [locallyDeletedEntries, setLocallyDeletedEntries] = useState<Set<string>>(new Set());
 
   // Calculate today's date fresh each time - important for daily refresh
+  // Uses local timezone instead of UTC to fix timezone refresh issues
   const today = useMemo(() => {
-    const todayDate = new Date().toISOString().split('T')[0];
-    console.log('🔵 [HabitDashboard] Today calculated as:', todayDate, 'refreshKey:', refreshKey);
+    const todayDate = getTodayString();
+    console.log('🔵 [HabitDashboard] Today calculated as (local timezone):', todayDate, 'refreshKey:', refreshKey);
     return todayDate;
   }, [refreshKey]); // Depend on refreshKey to recalculate when needed
 
@@ -74,9 +75,9 @@ export const HabitDashboard: React.FC<HabitDashboardProps> = ({
 
     // Set up interval to check for date changes (every minute)
     const interval = setInterval(() => {
-      const currentDate = new Date().toISOString().split('T')[0];
+      const currentDate = getTodayString();
       if (currentDate !== today) {
-        console.log('🔵 [HabitDashboard] Date changed from', today, 'to', currentDate, '- refreshing');
+        console.log('🔵 [HabitDashboard] Date changed from', today, 'to', currentDate, '(local timezone) - refreshing');
         setRefreshKey(prev => prev + 1);
       }
     }, 60000); // Check every minute

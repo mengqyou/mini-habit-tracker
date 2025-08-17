@@ -34,3 +34,16 @@ export interface HabitSummary {
   yearlyEntries: number;
   levelDistribution: Record<string, number>;
 }
+
+// Date utility functions for proper local timezone handling
+export const getLocalDateString = (date?: Date): string => {
+  const d = date || new Date();
+  const year = d.getFullYear();
+  const month = String(d.getMonth() + 1).padStart(2, '0');
+  const day = String(d.getDate()).padStart(2, '0');
+  return `${year}-${month}-${day}`;
+};
+
+export const getTodayString = (): string => {
+  return getLocalDateString();
+};

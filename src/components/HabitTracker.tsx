@@ -6,7 +6,7 @@ import {
   StyleSheet,
   Alert,
 } from 'react-native';
-import { Habit, HabitEntry } from '../types';
+import { Habit, HabitEntry, getTodayString } from '../types';
 
 interface HabitTrackerProps {
   habit: Habit;
@@ -21,7 +21,7 @@ export const HabitTracker: React.FC<HabitTrackerProps> = ({
   onEntryAdd,
   onEntryUpdate,
 }) => {
-  const today = new Date().toISOString().split('T')[0];
+  const today = getTodayString();
   const [todayEntry, setTodayEntry] = useState<HabitEntry | null>(null);
 
   useEffect(() => {
